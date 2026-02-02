@@ -19,17 +19,43 @@ async def get_tasks_by_user_id(
     skip: int = 0,
     limit: int = 100,
     status: Optional[str] = None,
+    priority: Optional[str] = None,
+    search: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     sort_by: str = "created_at",
     sort_order: str = "desc"
 ):
     """
-    Retrieve all tasks for a specific user with optional filtering and sorting
+    Retrieve all tasks for a specific user with optional filtering, search, and sorting
     """
     try:
         query = select(Task).where(Task.user_id == user_id)
 
+        # Apply status filter
         if status is not None:
             query = query.where(Task.status == status)
+
+        # Apply priority filter
+        if priority is not None:
+            query = query.where(Task.priority == priority)
+
+        # Apply search filter (across title and description)
+        if search is not None:
+            search_expr = f"%{search}%"
+            from sqlalchemy import or_, and_
+            query = query.where(
+                or_(
+                    Task.title.ilike(search_expr),
+                    and_(Task.description.is_not(None), Task.description.ilike(search_expr))
+                )
+            )
+
+        # Apply date range filter
+        if date_from is not None:
+            query = query.where(Task.created_at >= date_from)
+        if date_to is not None:
+            query = query.where(Task.created_at <= date_to)
 
         # Apply sorting
         if sort_by == "due_date":
@@ -42,6 +68,16 @@ async def get_tasks_by_user_id(
                 query = query.order_by(Task.created_at.asc())
             else:
                 query = query.order_by(Task.created_at.desc())
+        elif sort_by == "priority":
+            if sort_order == "asc":
+                query = query.order_by(Task.priority.asc())
+            else:
+                query = query.order_by(Task.priority.desc())
+        elif sort_by == "title":
+            if sort_order == "asc":
+                query = query.order_by(Task.title.asc())
+            else:
+                query = query.order_by(Task.title.desc())
         else:
             if sort_order == "asc":
                 query = query.order_by(Task.title.asc())
@@ -159,6 +195,7 @@ async def delete_task(session, task_id: str, user_id: str):
 async def toggle_task_completion(session, task_id: str, user_id: str, status: Optional[str] = None):
     """
     Toggle the status of a specific task for a specific user
+    If the task is recurring and being marked as completed, create a new recurring instance
     """
     try:
         # Get the existing task
@@ -170,6 +207,7 @@ async def toggle_task_completion(session, task_id: str, user_id: str, status: Op
             raise TaskNotFoundException(task_id)
 
         # Update status
+        original_status = task.status
         if status is not None:
             task.status = status
         else:
@@ -182,10 +220,37 @@ async def toggle_task_completion(session, task_id: str, user_id: str, status: Op
         # Update the updated_at timestamp
         task.updated_at = datetime.utcnow()
 
+        # Handle recurrence if the task is being marked as completed
+        new_task_instance = None
+        if original_status != 'completed' and task.status == 'completed' and task.recurrence_pattern != 'none':
+            # Task is being marked as completed and it's a recurring task
+            # Create a new instance for the next occurrence
+            from ..utils import calculate_next_occurrence
+            next_due_date = calculate_next_occurrence(task.due_date, task.recurrence_pattern.value if hasattr(task.recurrence_pattern, 'value') else task.recurrence_pattern)
+
+            # Create new task with same properties but reset to pending
+            new_task = Task(
+                user_id=task.user_id,
+                title=task.title,
+                description=task.description,
+                completed=False,
+                due_date=next_due_date,
+                priority=task.priority,
+                recurrence_pattern=task.recurrence_pattern,
+                tags=task.tags,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+
+            session.add(new_task)
+            await session.flush()  # Get the new task ID without committing
+            new_task_instance = new_task
+
         await session.commit()
         await session.refresh(task)
 
-        return task
+        # Return both the updated task and the new recurring instance if created
+        return task, new_task_instance
     except TaskNotFoundException:
         raise
     except Exception as e:

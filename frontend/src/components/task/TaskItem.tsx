@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Task } from '@/lib/api';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
@@ -11,10 +10,12 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { isOverdue } from '@/lib/utils';
+import { Task as ApiTask } from '@/lib/api';
+import { taskApi } from '@/lib/api';
 
 interface TaskItemProps {
-  task: Task;
-  onUpdate: (task: Task) => void;
+  task: ApiTask;
+  onUpdate: (task: ApiTask) => void;
   onDelete: (taskId: string) => void;
   onToggleComplete: (taskId: string, completed: boolean) => void;
 }
@@ -26,19 +27,26 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
     description: task.description || "",
     priority: task.priority,
     due_date: task.due_date || "",
+    status: task.status || "pending", // Add required status field
+    type: task.type || "daily", // Add required type field
   });
 
-  const handleSave = () => {
-    const updatedTask: Task = {
-      ...task,
-      title: editedTask.title,
-      description: editedTask.description,
-      priority: editedTask.priority as 'low' | 'medium' | 'high',
-      due_date: editedTask.due_date || undefined,
-    };
+  const handleSave = async () => {
+    try {
+      // Update the task using the authenticated API
+      const updatedTask = await taskApi.updateTask(task.id, {
+        title: editedTask.title,
+        description: editedTask.description,
+        priority: editedTask.priority as 'low' | 'medium' | 'high',
+        due_date: editedTask.due_date || undefined,
+      });
 
-    onUpdate(updatedTask);
-    setIsEditing(false);
+      onUpdate(updatedTask);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert('Failed to update task. Please try again.');
+    }
   };
 
   const handleCancel = () => {
@@ -47,13 +55,15 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
       description: task.description || "",
       priority: task.priority,
       due_date: task.due_date || "",
+      status: task.status || "pending",
+      type: task.type || "daily",
     });
     setIsEditing(false);
   };
 
   return (
     <Card className={`transition-all duration-200 ${
-      task.status === 'completed'
+      task.status === "completed"
         ? "bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
         : "bg-white/80 dark:bg-gray-800/80 border-gray-200 dark:border-gray-600"
     } ${isOverdue(task.due_date || "") ? "border-l-4 border-l-red-500" : ""}`}>
@@ -80,9 +90,9 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
                 </SelectContent>
               </Select>
               <Input
@@ -99,13 +109,22 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
               <Checkbox
-                checked={task.status === 'completed'}
-                onCheckedChange={(checked) => onToggleComplete(task.id, Boolean(checked))}
+                checked={task.status === "completed"}
+                onCheckedChange={async (checked) => {
+                  try {
+                    // Toggle completion using the authenticated API
+                    const updatedTask = await taskApi.updateTaskCompletion(task.id, Boolean(checked));
+                    onToggleComplete(task.id, Boolean(checked));
+                  } catch (error) {
+                    console.error('Error updating task completion:', error);
+                    alert('Failed to update task completion. Please try again.');
+                  }
+                }}
                 className="mt-1 self-start"
               />
               <div className="flex-1 min-w-0">
                 <h3 className={`font-medium break-words ${
-                  task.status === 'completed'
+                  task.status === "completed"
                     ? "line-through text-gray-500 dark:text-gray-400"
                     : "text-gray-800 dark:text-white"
                 }`}>
@@ -118,7 +137,7 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
                 )}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <Badge variant={task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"}>
-                    {task.priority}
+                    {task.priority.toLowerCase()}
                   </Badge>
                   {task.due_date && (
                     <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -151,7 +170,18 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
               <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
                 <Edit3 className="h-4 w-4 mr-2" /> Edit
               </Button>
-              <Button size="sm" variant="outline" onClick={() => onDelete(task.id)}>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (confirm('Are you sure you want to delete this task?')) {
+                  try {
+                    // Delete the task using the authenticated API
+                    await taskApi.deleteTask(task.id);
+                    onDelete(task.id);
+                  } catch (error) {
+                    console.error('Error deleting task:', error);
+                    alert('Failed to delete task. Please try again.');
+                  }
+                }
+              }}>
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </Button>
             </>

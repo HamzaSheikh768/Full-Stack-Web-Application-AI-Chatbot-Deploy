@@ -8,22 +8,22 @@
 
 **Goal**: Initialize the project with proper structure and configuration.
 
-- [ ] T001 Create backend directory structure per implementation plan
-- [ ] T002 Set up requirements.txt with dependencies in backend/requirements.txt
-- [ ] T003 Create root .env and .env.example files with authentication and database variables
-- [ ] T004 Configure database connection in backend/db.py using asyncpg and SQLModel
-- [ ] T005 Create backend/CLAUDE.md with development guidelines
-- [ ] T006 Initialize main.py with FastAPI app setup and basic configuration
+- [x] T001 Create backend directory structure per implementation plan
+- [x] T002 Set up requirements.txt with dependencies in backend/requirements.txt
+- [x] T003 Create root .env and .env.example files with authentication and database variables
+- [x] T004 Configure database connection in backend/db.py using asyncpg and SQLModel
+- [x] T005 Create backend/CLAUDE.md with development guidelines
+- [x] T006 Initialize main.py with FastAPI app setup and basic configuration
 
 ## Phase 2: Foundational
 
 **Goal**: Implement foundational components and services that support all user stories.
 
-- [ ] T007 [P] Implement User and Task models in backend/models.py using SQLModel
-- [ ] T008 [P] Create Pydantic schemas in backend/schemas.py for requests/responses
-- [ ] T009 Implement JWT authentication middleware in backend/auth.py using PyJWT
-- [ ] T010 [P] Create utility functions in backend/utils.py for recurrence logic
-- [ ] T011 [P] Set up rate limiting in backend/utils.py using slowapi
+- [x] T007 [P] Implement User and Task models in backend/models.py using SQLModel
+- [x] T008 [P] Create Pydantic schemas in backend/schemas.py for requests/responses
+- [x] T009 Implement JWT authentication middleware in backend/auth.py using PyJWT
+- [x] T010 [P] Create utility functions in backend/utils.py for recurrence logic
+- [x] T011 [P] Set up rate limiting in backend/utils.py using slowapi
 
 ## Phase 3: [US1] User Authentication & Authorization
 
@@ -40,10 +40,10 @@
 
 **Implementation Tasks**:
 
-- [ ] T012 [US1] Implement JWT token verification function in backend/auth.py
-- [ ] T013 [US1] Create current_user dependency with token validation in backend/auth.py
-- [ ] T014 [US1] Implement user_id validation against URL parameter in backend/auth.py
-- [ ] T015 [US1] Create middleware to apply authentication to all routes in backend/auth.py
+- [x] T012 [US1] Implement JWT token verification function in backend/auth.py
+- [x] T013 [US1] Create current_user dependency with token validation in backend/auth.py
+- [x] T014 [US1] Implement user_id validation against URL parameter in backend/auth.py
+- [x] T015 [US1] Create middleware to apply authentication to all routes in backend/auth.py
 - [ ] T016 [US1] Test authentication flow with valid and invalid JWT tokens
 
 ## Phase 4: [US2] Task CRUD Operations
@@ -61,13 +61,13 @@
 
 **Implementation Tasks**:
 
-- [ ] T017 [P] [US2] Implement task creation function in backend/crud/tasks.py
-- [ ] T018 [P] [US2] Implement task retrieval function with filtering in backend/crud/tasks.py
-- [ ] T019 [P] [US2] Implement task update function with partial updates in backend/crud/tasks.py
-- [ ] T020 [P] [US2] Implement task deletion function in backend/crud/tasks.py
-- [ ] T021 [P] [US2] Implement task completion toggle function in backend/crud/tasks.py
-- [ ] T022 [P] [US2] Create task endpoints in backend/routes/tasks.py for CRUD operations
-- [ ] T023 [US2] Connect task routes to main application in backend/main.py
+- [x] T017 [P] [US2] Implement task creation function in backend/crud/tasks.py
+- [x] T018 [P] [US2] Implement task retrieval function with filtering in backend/crud/tasks.py
+- [x] T019 [P] [US2] Implement task update function with partial updates in backend/crud/tasks.py
+- [x] T020 [P] [US2] Implement task deletion function in backend/crud/tasks.py
+- [x] T021 [P] [US2] Implement task completion toggle function in backend/crud/tasks.py
+- [x] T022 [P] [US2] Create task endpoints in backend/routes/tasks.py for CRUD operations
+- [x] T023 [US2] Connect task routes to main application in backend/main.py
 - [ ] T024 [US2] Test complete task CRUD workflow with validation
 
 ## Phase 5: [US3] Task Properties & Features
@@ -85,10 +85,10 @@
 
 **Implementation Tasks**:
 
-- [ ] T025 [P] [US3] Enhance Task model with priority, tags, due_date, recurrence fields in backend/models.py
-- [ ] T026 [P] [US3] Update Pydantic schemas to include new task properties in backend/schemas.py
-- [ ] T027 [US3] Implement timezone handling for due dates in backend/utils.py
-- [ ] T028 [US3] Add timestamp management to Task model in backend/models.py
+- [x] T025 [P] [US3] Enhance Task model with priority, tags, due_date, recurrence fields in backend/models.py
+- [x] T026 [P] [US3] Update Pydantic schemas to include new task properties in backend/schemas.py
+- [x] T027 [US3] Implement timezone handling for due dates in backend/utils.py
+- [x] T028 [US3] Add timestamp management to Task model in backend/models.py
 - [ ] T029 [US3] Test task property creation and updates with validation
 
 ## Phase 6: [US4] Search, Filter & Sort
@@ -106,12 +106,12 @@
 
 **Implementation Tasks**:
 
-- [ ] T030 [P] [US4] Enhance task retrieval function with search capability in backend/crud/tasks.py
-- [ ] T031 [P] [US4] Implement status filtering in task retrieval function in backend/crud/tasks.py
-- [ ] T032 [P] [US4] Implement priority filtering in task retrieval function in backend/crud/tasks.py
-- [ ] T033 [P] [US4] Implement date range filtering in task retrieval function in backend/crud/tasks.py
-- [ ] T034 [P] [US4] Implement sorting functionality in task retrieval function in backend/crud/tasks.py
-- [ ] T035 [US4] Update GET /tasks endpoint to support query parameters in backend/routes/tasks.py
+- [x] T030 [P] [US4] Enhance task retrieval function with search capability in backend/crud/tasks.py
+- [x] T031 [P] [US4] Implement status filtering in task retrieval function in backend/crud/tasks.py
+- [x] T032 [P] [US4] Implement priority filtering in task retrieval function in backend/crud/tasks.py
+- [x] T033 [P] [US4] Implement date range filtering in task retrieval function in backend/crud/tasks.py
+- [x] T034 [P] [US4] Implement sorting functionality in task retrieval function in backend/crud/tasks.py
+- [x] T035 [US4] Update GET /tasks endpoint to support query parameters in backend/routes/tasks.py
 - [ ] T036 [US4] Test search, filter and sort functionality comprehensively
 
 ## Phase 7: [US5] Recurring Tasks
@@ -129,9 +129,9 @@
 
 **Implementation Tasks**:
 
-- [ ] T037 [P] [US5] Implement recurrence calculation functions in backend/utils.py
-- [ ] T038 [P] [US5] Update task completion toggle to handle recurrence logic in backend/crud/tasks.py
-- [ ] T039 [P] [US5] Implement async task creation for recurrence in backend/crud/tasks.py
+- [x] T037 [P] [US5] Implement recurrence calculation functions in backend/utils.py
+- [x] T038 [P] [US5] Update task completion toggle to handle recurrence logic in backend/crud/tasks.py
+- [x] T039 [P] [US5] Implement async task creation for recurrence in backend/crud/tasks.py
 - [ ] T040 [US5] Test recurring task functionality with daily and weekly patterns
 - [ ] T41 [US5] Test recurrence edge cases and error handling
 
@@ -150,9 +150,9 @@
 
 **Implementation Tasks**:
 
-- [ ] T042 [P] [US6] Enhance all CRUD functions to filter by user_id in backend/crud/tasks.py
-- [ ] T043 [P] [US6] Implement resource ownership validation in backend/crud/tasks.py
-- [ ] T044 [P] [US6] Add rate limiting to task endpoints in backend/routes/tasks.py
+- [x] T042 [P] [US6] Enhance all CRUD functions to filter by user_id in backend/crud/tasks.py
+- [x] T043 [P] [US6] Implement resource ownership validation in backend/crud/tasks.py
+- [x] T044 [P] [US6] Add rate limiting to task endpoints in backend/routes/tasks.py
 - [ ] T045 [US6] Test data isolation between different users
 - [ ] T046 [US6] Test rate limiting functionality
 
@@ -160,13 +160,13 @@
 
 **Goal**: Enhance the application with error handling, validation, and performance optimizations.
 
-- [ ] T047 Implement comprehensive error handling with proper HTTP status codes
-- [ ] T048 Add input validation to all endpoints to prevent injection attacks
-- [ ] T049 Create database indexes for efficient querying (user_id, completed, due_date, priority)
-- [ ] T050 Optimize database queries for performance
-- [ ] T051 Add logging for audit trails and debugging
+- [x] T047 Implement comprehensive error handling with proper HTTP status codes
+- [x] T048 Add input validation to all endpoints to prevent injection attacks
+- [x] T049 Create database indexes for efficient querying (user_id, completed, due_date, priority)
+- [x] T050 Optimize database queries for performance
+- [x] T051 Add logging for audit trails and debugging
 - [ ] T052 Conduct final acceptance testing against all user stories
-- [ ] T053 Document API endpoints with examples
+- [x] T053 Document API endpoints with examples
 
 ## Dependencies
 

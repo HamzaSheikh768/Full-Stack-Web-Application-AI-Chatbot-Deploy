@@ -40,7 +40,7 @@ const TaskList: React.FC<TaskListProps> = ({
               <div className="flex items-center space-x-2 pt-1">
                 <Checkbox
                   id={`completed-${task.id}`}
-                  checked={task.status === 'completed'}
+                  checked={task.is_completed}
                   onCheckedChange={(checked) => {
                     onToggleComplete(task.id, Boolean(checked));
                   }}
@@ -48,7 +48,7 @@ const TaskList: React.FC<TaskListProps> = ({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className={`font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
+                <h3 className={`font-medium truncate ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
                   {task.title}
                 </h3>
                 {task.description && (
@@ -66,9 +66,9 @@ const TaskList: React.FC<TaskListProps> = ({
                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
               </Badge>
 
-              {task.type && (
+              {task.recurrence_pattern && (
                 <Badge variant="outline">
-                  {task.type.charAt(0).toUpperCase() + task.type.slice(1)}
+                  {task.recurrence_pattern.charAt(0).toUpperCase() + task.recurrence_pattern.slice(1)}
                 </Badge>
               )}
 

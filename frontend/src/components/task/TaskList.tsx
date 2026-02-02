@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Task } from '@/lib/api';
 import { TaskItem } from './TaskItem';
 import { TaskFilters } from './TaskFilters';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { Plus } from 'lucide-react';
+import { Task as ApiTask } from '@/lib/api';
 
 interface TaskListProps {
-  tasks: Task[];
+  tasks: ApiTask[];
   loading?: boolean;
-  onTaskUpdate: (task: Task) => void;
+  onTaskUpdate: (task: ApiTask) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskToggleComplete: (taskId: string, completed: boolean) => void;
   onAddTaskClick: () => void;
@@ -25,13 +25,56 @@ export function TaskList({
   onTaskToggleComplete,
   onAddTaskClick
 }: TaskListProps) {
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>(tasks);
+  const [filteredTasks, setFilteredTasks] = useState<ApiTask[]>(tasks);
   const [filters, setFilters] = useState({
     status: undefined as 'completed' | 'pending' | undefined,
     priority: '',
     dueDate: '',
     search: ''
   });
+
+  // Subscribe to real-time updates from AI Chat
+  useEffect(() => {
+    const handleRealTimeTaskUpdate = (event: CustomEvent) => {
+      const { updateType, taskData } = event.detail;
+
+      switch(updateType) {
+        case 'created':
+          // Add new task to the list
+          setFilteredTasks(prev => [...prev, taskData]);
+          break;
+        case 'updated':
+          // Update existing task in the list
+          setFilteredTasks(prev =>
+            prev.map(task =>
+              task.id === taskData.id ? { ...task, ...taskData } : task
+            )
+          );
+          break;
+        case 'completed':
+          // Update task completion status
+          setFilteredTasks(prev =>
+            prev.map(task =>
+              task.id === taskData.id ? { ...task, completed: true } : task
+            )
+          );
+          break;
+        case 'deleted':
+          // Remove task from the list
+          setFilteredTasks(prev =>
+            prev.filter(task => task.id !== taskData.id)
+          );
+          break;
+      }
+    };
+
+    // Listen for real-time updates from AI Chat
+    window.addEventListener('taskUpdate', handleRealTimeTaskUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('taskUpdate', handleRealTimeTaskUpdate as EventListener);
+    };
+  }, []);
 
   // Apply filters when tasks or filters change
   useEffect(() => {
@@ -46,7 +89,7 @@ export function TaskList({
 
     // Apply priority filter
     if (filters.priority) {
-      result = result.filter(task => task.priority === filters.priority);
+      result = result.filter(task => task.priority?.toLowerCase() === filters.priority.toLowerCase());
     }
 
     // Apply search filter

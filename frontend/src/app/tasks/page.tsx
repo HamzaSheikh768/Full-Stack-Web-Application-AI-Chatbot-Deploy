@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { TaskForm, TaskFormData } from '@/components/tasks/TaskForm';
-import { TaskList } from '@/components/tasks/TaskList';
+import { SearchableTaskList } from '@/components/tasks/SearchableTaskList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Import the Task type from the service
+// Import the Task type from the API
 import { TaskService } from '@/lib/task-service';
-import { Task } from '@/lib/api'; // Use the Task type from the API service
+import { Task } from '@/lib/api'; // Use the Task type from the API which handles mapping
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -17,11 +19,22 @@ export default function TasksPage() {
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loadingIds, setLoadingIds] = useState<string[]>([]); // Track IDs of tasks being processed
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Fetch tasks on component mount
+  // Redirect to login if not authenticated
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  // Fetch tasks on component mount (only if authenticated)
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTasks();
+    }
+  }, [isAuthenticated]);
 
   const fetchTasks = async () => {
     try {
@@ -71,7 +84,7 @@ export default function TasksPage() {
           title: formData.title,
           description: formData.description,
           priority: formData.priority.toLowerCase() as 'low' | 'medium' | 'high',
-          type: formData.type || editingTask.type || 'daily', // Use provided type or fallback to existing type
+          type: (formData.type as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly') || editingTask.type || 'daily', // Use provided type or fallback to existing type
           due_date: formData.dueDate,
         }
       );
@@ -170,16 +183,24 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-4 sm:py-8">
+    <div className="min-h-screen bg-background py-6 sm:py-8 fade-in-up">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-        <Card className="bg-card border border-border rounded-xl">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="text-xl sm:text-2xl font-bold">Task Management</CardTitle>
+        {/* Animated heading with underline as per specification */}
+        <div className="mb-8 sm:mb-10 relative">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground inline-block relative group">
+            Tasks
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
+          </h1>
+        </div>
+
+        <Card className="bg-card border border-border rounded-2xl hover:shadow-lg transition-all duration-300">
+          <CardHeader className="border-b border-border pb-4 sm:pb-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">Task Management</CardTitle>
             <p className="text-sm sm:text-base text-muted-foreground">
               Create, manage, and track your tasks efficiently
             </p>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 sm:pt-8">
             {/* Task Creation/Editing Form */}
             {(editingTask ? (
               <div className="mb-6 sm:mb-8">
@@ -192,14 +213,14 @@ export default function TasksPage() {
                     title: editingTask.title,
                     description: editingTask.description || "",
                     priority: editingTask.priority,
-                    type: editingTask.type || "daily",
+                    type: (editingTask.type as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly') || "daily",
                     dueDate: editingTask.due_date || ""
                   }}
                   isSubmitting={isCreating}
                 />
               </div>
             ) : (
-              <div className="mb-6 sm:mb-8">
+              <div className="mb-6 sm:mb-8 animate-slide-up">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
                   <h2 className="text-lg sm:text-xl font-semibold">Create New Task</h2>
                 </div>
@@ -220,7 +241,7 @@ export default function TasksPage() {
                 </p>
               </div>
 
-              <TaskList
+              <SearchableTaskList
                 tasks={tasks}
                 onToggleComplete={handleToggleComplete}
                 onEdit={handleEditTask}

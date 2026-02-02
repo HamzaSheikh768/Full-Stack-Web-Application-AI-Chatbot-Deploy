@@ -1,9 +1,20 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 import sqlalchemy as sa
+from sqlalchemy import String
+from enum import Enum
+
+def get_utc_now():
+    """Helper function to get current UTC time"""
+    return datetime.now(timezone.utc)
+
+
+class UserRole(str, Enum):
+    admin = "admin"
+    user = "user"
+    guest = "guest"
 
 
 class User(SQLModel, table=True):
@@ -12,14 +23,15 @@ class User(SQLModel, table=True):
     """
     id: str = Field(
         sa_column=sa.Column(
-            PostgresUUID(as_uuid=True),
+            String,
             primary_key=True,
-            default=uuid.uuid4
+            default=lambda: str(uuid.uuid4())
         )
     )
-    email: str = Field(sa_column=sa.Column(sa.String, unique=True, nullable=False))
-    name: Optional[str] = Field(sa_column=sa.Column(sa.String(100)))  # Optional name field
-    password_hash: str = Field(sa_column=sa.Column(sa.String, nullable=False))  # For authentication
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=sa.Column(sa.DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=sa.Column(sa.DateTime, nullable=False))
+    email: str = Field(sa_column=sa.Column(sa.String, unique=True, nullable=False, index=True))
+    first_name: Optional[str] = Field(default=None, sa_column=sa.Column(sa.String, nullable=True))
+    last_name: Optional[str] = Field(default=None, sa_column=sa.Column(sa.String, nullable=True))
+    password_hash: str = Field(sa_column=sa.Column('hashed_password', sa.String, nullable=False))
     is_active: bool = Field(default=True, sa_column=sa.Column(sa.Boolean, nullable=False))
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=sa.Column(sa.DateTime, nullable=False))
+    updated_at: datetime = Field(default_factory=get_utc_now, sa_column=sa.Column(sa.DateTime, nullable=False))

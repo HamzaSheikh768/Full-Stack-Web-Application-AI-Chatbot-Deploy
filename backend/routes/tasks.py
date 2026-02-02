@@ -1,21 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
 from sqlmodel import Session, select, and_
 from datetime import datetime
 from ..db import get_session
 from ..models import Task, User, TaskCreate, TaskUpdate
 from ..schemas import TaskRead, TaskListResponse, TaskUpdateStatus
-from ..auth import get_current_user_id, verify_user_owns_resource
 from enum import Enum
 
 
-router = APIRouter(prefix="/api/v1", tags=["tasks"])
+router = APIRouter(prefix="/api", tags=["tasks"])
 
 
 @router.get("/{user_id}/tasks", response_model=TaskListResponse)
 def get_tasks(
     user_id: str,
-    current_user_id: str = Depends(get_current_user_id),
     completed: Optional[bool] = Query(None, description="Filter by completion status"),
     priority: Optional[str] = Query(None, description="Filter by priority level"),
     due_date: Optional[str] = Query(None, description="Filter by due date"),
@@ -26,8 +24,6 @@ def get_tasks(
     offset: int = Query(0, ge=0, description="Number of tasks to skip"),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to access these tasks
-    verify_user_owns_resource(current_user_id, user_id)
 
     # Build query with filters
     query = select(Task).where(Task.user_id == user_id)
@@ -101,7 +97,7 @@ def get_tasks(
     tasks = session.exec(query).all()
 
     return TaskListResponse(
-        tasks=[TaskRead.from_orm(task) for task in tasks],
+        tasks=[TaskRead.model_validate(task) for task in tasks],
         total=total_count,
         offset=offset,
         limit=limit
@@ -112,38 +108,31 @@ def get_tasks(
 def create_task(
     user_id: str,
     task_create: TaskCreate,
-    current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to create tasks for this user_id
-    verify_user_owns_resource(current_user_id, user_id)
 
     # Create task
     task_data = task_create.dict()
     task = Task(
         **task_data,
         user_id=user_id,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(datetime.timezone.utc),
+        updated_at=datetime.now(datetime.timezone.utc)
     )
 
     session.add(task)
     session.commit()
     session.refresh(task)
 
-    return TaskRead.from_orm(task)
+    return TaskRead.model_validate(task)
 
 
 @router.get("/{user_id}/tasks/{task_id}", response_model=TaskRead)
 def get_task(
     user_id: str,
     task_id: int,
-    current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to access this task
-    verify_user_owns_resource(current_user_id, user_id)
-
     # Get task
     task = session.get(Task, task_id)
     if not task:
@@ -152,10 +141,14 @@ def get_task(
             detail="Task not found"
         )
 
-    # Double-check that the task belongs to the user
-    verify_user_owns_resource(task.user_id, user_id)
+    # Check that the task belongs to the user
+    if task.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
 
-    return TaskRead.from_orm(task)
+    return TaskRead.model_validate(task)
 
 
 @router.put("/{user_id}/tasks/{task_id}", response_model=TaskRead)
@@ -163,12 +156,8 @@ def update_task(
     user_id: str,
     task_id: int,
     task_update: TaskUpdate,
-    current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to update this task
-    verify_user_owns_resource(current_user_id, user_id)
-
     # Get task
     task = session.get(Task, task_id)
     if not task:
@@ -177,33 +166,33 @@ def update_task(
             detail="Task not found"
         )
 
-    # Double-check that the task belongs to the user
-    verify_user_owns_resource(task.user_id, user_id)
+    # Check that the task belongs to the user
+    if task.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
 
     # Update task fields
     update_data = task_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(task, field, value)
 
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(datetime.timezone.utc)
 
     session.add(task)
     session.commit()
     session.refresh(task)
 
-    return TaskRead.from_orm(task)
+    return TaskRead.model_validate(task)
 
 
 @router.delete("/{user_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
     user_id: str,
     task_id: int,
-    current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to delete this task
-    verify_user_owns_resource(current_user_id, user_id)
-
     # Get task
     task = session.get(Task, task_id)
     if not task:
@@ -212,8 +201,12 @@ def delete_task(
             detail="Task not found"
         )
 
-    # Double-check that the task belongs to the user
-    verify_user_owns_resource(task.user_id, user_id)
+    # Check that the task belongs to the user
+    if task.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
 
     session.delete(task)
     session.commit()
@@ -224,12 +217,8 @@ def update_task_completion(
     user_id: str,
     task_id: int,
     task_status: TaskUpdateStatus,
-    current_user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session)
 ):
-    # Verify user has permission to update this task
-    verify_user_owns_resource(current_user_id, user_id)
-
     # Get task
     task = session.get(Task, task_id)
     if not task:
@@ -238,12 +227,16 @@ def update_task_completion(
             detail="Task not found"
         )
 
-    # Double-check that the task belongs to the user
-    verify_user_owns_resource(task.user_id, user_id)
+    # Check that the task belongs to the user
+    if task.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
 
     # Update completion status
     task.completed = task_status.completed
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(datetime.timezone.utc)
 
     # Handle recurring tasks
     if task_status.completed and task.recurrence != RecurrenceEnum.none:
@@ -282,4 +275,4 @@ def update_task_completion(
     session.commit()
     session.refresh(task)
 
-    return TaskRead.from_orm(task)
+    return TaskRead.model_validate(task)

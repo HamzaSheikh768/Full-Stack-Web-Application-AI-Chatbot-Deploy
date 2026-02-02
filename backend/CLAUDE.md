@@ -13,7 +13,7 @@ You are working on the backend implementation of a Todo application. This is par
 
 ## Folder Structure
 ```
-backend/
+backend
 ├── main.py                 # FastAPI app entry point, middleware, lifespan events
 ├── models.py               # SQLModel database models (User, Task)
 ├── schemas.py              # Pydantic schemas for request/response validation

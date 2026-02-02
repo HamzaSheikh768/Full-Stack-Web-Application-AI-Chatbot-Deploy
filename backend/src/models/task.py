@@ -1,49 +1,52 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
-from enum import Enum
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 import sqlalchemy as sa
+from sqlalchemy import String
+from enum import Enum
+from sqlalchemy.sql.schema import ForeignKey
+import json
+
+def get_utc_now():
+    """Helper function to get current UTC time"""
+    return datetime.now(timezone.utc)
 
 
 class TaskPriority(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    low = "low"
+    medium = "medium"
+    high = "high"
 
 
-class TaskType(str, Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
+class RecurrenceEnum(str, Enum):
+    """Recurrence patterns for tasks"""
+    none = "none"
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    yearly = "yearly"
 
 
 class Task(SQLModel, table=True):
     """
-    Task entity representing a user's task with title, description, and completion status
+    Task entity representing a user's task item in the todo system
     """
     id: str = Field(
         sa_column=sa.Column(
-            PostgresUUID(as_uuid=True),
+            String,
             primary_key=True,
-            default=uuid.uuid4
+            default=lambda: str(uuid.uuid4())
         )
     )
-    user_id: str = Field(sa_column=sa.Column(sa.Text, sa.ForeignKey("user.id"), nullable=False))
-    parent_id: Optional[str] = Field(default=None, sa_column=sa.Column(PostgresUUID(as_uuid=True), sa.ForeignKey("task.id")))  # For hierarchical tasks
-    title: str = Field(sa_column=sa.Column(sa.String(200), nullable=False))
-    description: Optional[str] = Field(sa_column=sa.Column(sa.String(1000)))
-    is_completed: bool = Field(default=False, sa_column=sa.Column(sa.Boolean, nullable=False))  # Boolean field in database
-    priority: str = Field(default="medium", sa_column=sa.Column(sa.Enum(TaskPriority, name="priorityenum"), nullable=False))  # Enum: low, medium, high
-    due_date: Optional[datetime] = Field(sa_column=sa.Column(sa.DateTime))
-    recurrence_pattern: Optional[str] = Field(default=None, sa_column=sa.Column(sa.Enum(TaskType, name="tasktypeenum")))  # Pattern for recurring tasks
-    order_index: str = Field(default="0", sa_column=sa.Column(sa.String, nullable=False))  # For ordering tasks
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=sa.Column(sa.DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=sa.Column(sa.DateTime, nullable=False))
-
-    # Add index hints for common queries
-    __table_args__ = (
-        sa.Index('idx_task_user_id', 'user_id'),
-        {"sqlite_autoincrement": True},
-    )
+    user_id: str = Field(sa_column=sa.Column(sa.String, sa.ForeignKey("user.id"), nullable=False, index=True))
+    parent_id: Optional[str] = Field(default=None, sa_column=sa.Column(sa.String, sa.ForeignKey("task.id"), nullable=True))
+    title: str = Field(sa_column=sa.Column(sa.String(256), nullable=False))  # Updated to match db
+    description: Optional[str] = Field(sa_column=sa.Column(sa.String, nullable=True))  # Updated to match db
+    completed: bool = Field(default=False, sa_column=sa.Column('is_completed', sa.Boolean, nullable=False))
+    priority: str = Field(default="MEDIUM", sa_column=sa.Column('priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', name='priorityenum', create_type=False), nullable=False))  # Updated to match db enum values
+    due_date: Optional[datetime] = Field(sa_column=sa.Column(sa.DateTime, nullable=True))
+    recurrence_pattern: str = Field(default="none", sa_column=sa.Column(sa.String, nullable=False))  # Updated to match db
+    order_index: Optional[str] = Field(default="0", sa_column=sa.Column(sa.String, nullable=True))  # Added from db
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=sa.Column(sa.DateTime, nullable=False))
+    updated_at: datetime = Field(default_factory=get_utc_now, sa_column=sa.Column(sa.DateTime, nullable=False))

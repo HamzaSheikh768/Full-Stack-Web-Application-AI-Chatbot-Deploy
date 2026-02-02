@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from sqlmodel import SQLModel
-from src.models import User, Task  # Import your models
+from src.models import User, Task, Session  # Import your models
 
 import os
 import sys

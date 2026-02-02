@@ -40,6 +40,11 @@ export function MobileNav() {
               Tasks
             </Button>
           </Link>
+          <Link href={'/chat' as any}>
+            <Button variant="outline" className="w-full justify-start">
+              AI Chat
+            </Button>
+          </Link>
         </div>
       </SheetContent>
     </Sheet>

@@ -1,10 +1,13 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 → 1.0.0 (initial creation)
+- Version change: 1.0.0 → 1.0.0 (initial creation), (major architectural shift to AI Chatbot with Cohere-only constrain
+- Added sections: Phase III - AI Chatbot Architecture, Cohere API Constraint, MCP Tools Specification, Chat API Endpoint, Agent Behavior Specification
+- Removed sections: Traditional CRUD-focused UI Definition, Traditional Project Structure
 - Added principles: Spec-Driven Development, Modularity and Reusability, Security First, User-Centric Design, Efficiency, Visual Consistency
 - Added sections: Core Principles, Key Standards, Technology Stack, Feature Definitions, UI Definition, Constraints, Success Criteria
-- Templates requiring updates: ✅ All templates created
-- Follow-up TODOs: None
+- Templates requiring updates: ✅ All templates created align with new AI Chatbot 
+architecture
+- Follow-up TODOs: Update spec templates for AI Chatbot features
 -->
 
 # Todo Full-Stack Web Application Constitution
@@ -153,3 +156,451 @@ The UI is responsive (mobile-first), using Next.js App Router. Theme: Dark mode 
 All development must adhere to the Spec-Driven Development workflow. Changes to this constitution require explicit approval and documentation. All implementations must follow the defined project structure and technology stack. Code reviews must verify compliance with all principles and standards defined in this constitution.
 
 **Version**: 1.0.0 | **Ratified**: 2026-01-11 | **Last Amended**: 2026-01-11
+
+# Todo AI Chatbot – System Constitution
+
+## Core Principles
+
+### Spec-Driven Development
+All implementation starts with writing/updating specs in /specs folder, followed by Claude Code generation. No direct code edits; iterate via prompts. This ensures that all development is guided by clear specifications and prevents ad-hoc coding that might not align with the overall architecture.
+
+### AI-First Architecture
+Design the entire system around conversational AI interface using official ChatKit SDK. Frontend uses ChatKit for UI, backend uses Cohere API for AI logic through MCP tools. All user interactions flow through natural language conversation with AI agent managing tasks via MCP tools.
+
+### Security First
+Enforce user isolation via JWT authentication; all data operations filtered by user ID. All user data must be properly isolated, access controls strictly enforced, and authentication/authorization implemented consistently across all endpoints and UI components.
+
+### Cohere-Only Constraint
+Use ONLY Cohere API key for all AI functionality. No OpenAI, Anthropic, or other AI API keys allowed. The system must be designed to work exclusively with Cohere's API for natural language processing and task management.
+
+### Stateless Server Model
+Backend must not store in-memory state; persist all state in database. Each chat request is stateless - load conversation history from DB, process through Cohere agent with MCP tools, store response, return result.
+
+### Modularity and Reusability
+Design components and APIs for extensibility, ensuring backend handles data logic and frontend focuses on presentation. Components must be self-contained, independently testable, and have clear, well-defined interfaces.
+
+## Phase III – Basic To Advance Level Functionality
+
+### 1. Purpose of This Constitution
+
+This constitution defines the binding rules, architecture, responsibilities, workflows, and specifications for implementing the Todo AI Chatbot using:
+
+- Official ChatKit SDK (Frontend UI)
+- Cohere API (AI Logic - ONLY allowed API key)
+- Official MCP SDK (Tooling Layer)
+- FastAPI (Backend)
+- SQLModel + Neon PostgreSQL (Persistence)
+- Better Auth (Authentication)
+
+This file acts as:
+- The single source of truth
+- The evaluation reference for judges
+- The control document for Claude Code execution
+
+No implementation may deviate from this constitution.
+
+### 2. Governing Development Methodology
+
+#### 2.1 Agentic Dev Stack Workflow (Mandatory)
+
+All development must strictly follow the workflow below:
+1. Write Specifications
+2. Generate an Execution Plan
+3. Break Plan into Atomic Tasks
+4. Implement via Claude Code
+5. Iterate Using Specs (No Manual Coding)
+
+Any implementation without prior specs and plan is considered invalid.
+
+### 3. System Objectives
+
+The system SHALL:
+- Provide a conversational AI interface for managing todos using ChatKit SDK
+- Use natural language, including voice input
+- Operate in a stateless server model
+- Persist all state in the database
+- Allow AI agents to manage tasks only through MCP tools
+- Use ONLY Cohere API key for AI functionality
+- Resume conversations seamlessly after server restart
+
+### 4. Architecture Constitution
+
+#### 4.1 High-Level Architecture
+```
+ChatKit UI (Official SDK)
+   │
+   ▼
+FastAPI Chat Endpoint (Stateless)
+   │
+   ▼
+Cohere API Integration
+   │
+   ▼
+MCP Server (Official MCP SDK Tools)
+   │
+   ▼
+Neon PostgreSQL (SQLModel ORM)
+```
+
+#### 4.2 Constitutional Constraints
+- Frontend must use official ChatKit SDK only
+- Backend must not store in-memory state
+- AI must not access database directly
+- AI must use MCP tools for all task operations
+- MCP tools must be stateless
+- ONLY Cohere API key allowed - no other AI APIs
+
+### 5. Frontend Constitution (ChatKit SDK)
+
+#### 5.1 Official ChatKit SDK Usage
+The frontend SHALL:
+- Use official OpenAI ChatKit SDK as the UI layer
+- Render:
+  - Message history
+  - Assistant responses
+  - Tool confirmations
+- Send only user input (text or voice) to backend
+
+#### 5.2 Voice Commands Constitution
+Voice input SHALL:
+- Use Web Speech API (browser-native)
+- Convert speech → text on the client
+- Forward resulting text to /api/{user_id}/chat
+- Never bypass ChatKit message flow
+- Voice is an input modality, not a logic layer.
+
+### 6. Backend Constitution (FastAPI)
+
+#### 6.1 Stateless Chat Endpoint
+**Endpoint**: `POST /api/{user_id}/chat`
+
+The endpoint SHALL:
+- Accept a user message
+- Fetch conversation history from database
+- Append the new user message
+- Process through Cohere API integration
+- Store assistant response
+- Return response + tool calls
+- Hold no server memory
+
+#### 6.2 Cohere API Integration
+- Use ONLY Cohere API key (environment variable: `COHERE_API_KEY`)
+- No fallback to other AI providers
+- Design system to work with Cohere's specific API patterns
+
+### 7. AI Constitution (Cohere API Integration)
+
+#### 7.1 Agent Responsibilities
+The AI Agent SHALL:
+- Interpret user intent using Cohere API
+- Decide which MCP tool to invoke
+- Never perform CRUD logic internally
+- Always respond with confirmation language
+
+#### 7.2 Cohere-Specific Constraints
+- System must be designed for Cohere's API response format
+- Handle Cohere-specific error cases
+- Optimize for Cohere's pricing and rate limits
+
+### 8. MCP Constitution (Official MCP SDK)
+
+#### 8.1 Role of MCP Server
+The MCP Server is the only gateway between AI and persistent data. It SHALL:
+- Expose tools as defined in specs
+- Validate inputs
+- Persist data via SQLModel
+- Return structured outputs
+
+#### 8.2 Tool Immutability Rule
+Once a tool spec is defined:
+- Its name
+- Its parameters
+- Its return shape
+Must not change without updating specs and re-planning.
+
+### 9. Database Constitution
+
+#### 9.1 Persistence Rules
+All state SHALL be persisted:
+- Tasks
+- Conversations
+- Messages
+No in-memory caching is allowed.
+
+#### 9.2 Models
+- Task
+- Conversation
+- Message
+These models define the entire memory of the system.
+
+### 10. Conversation Flow Constitution (Stateless)
+
+Every request MUST follow this exact lifecycle:
+1. Receive user input
+2. Load conversation from DB
+3. Build Cohere agent context
+4. Persist user message
+5. Execute Cohere agent
+6. Execute MCP tool(s)
+7. Persist assistant message
+8. Return response
+9. Forget everything (stateless)
+
+### 11. Error Handling Constitution
+
+The system SHALL:
+- Never crash on invalid input
+- Gracefully handle missing tasks
+- Respond politely to user mistakes
+- Return structured error messages
+- Handle Cohere API errors gracefully
+
+### 12. Development Workflow
+
+#### 12.1 Step-by-Step Process
+1. **Spec Writing/Updating**: Review requirements and update /specs files for AI Chatbot features
+2. **Generate Plan**: Prompt Claude Code with "@specs/features/[feature].md generate AI Chatbot implementation plan"
+3. **Task Implementation**: For each task, prompt Claude Code with specific AI Chatbot components
+4. **Integration and Testing**: Test ChatKit UI, Cohere API integration, MCP tools
+5. **Deployment Prep**: Configure environment variables (COHERE_API_KEY, BETTER_AUTH_SECRET, DATABASE_URL)
+6. **Review and Merge**: Ensure all features meet acceptance criteria
+
+### 13. Project Structure (AI Chatbot Focused)
+
+```
+/frontend          # Next.js with ChatKit SDK
+  /app             # App Router pages
+  /components      # ChatKit UI components
+  /lib             # API clients, Cohere integration
+
+/backend           # FastAPI with Cohere + MCP
+  /src
+    /api           # Chat endpoint, MCP server
+    /models        # SQLModel models
+    /services      # Cohere integration service
+    /mcp           # MCP tool implementations
+
+/specs             # AI Chatbot specifications
+  /ai-chatbot      # ChatKit, Cohere, MCP specs
+  /features        # Feature progression specs
+
+/.specify          # SpecKit Plus templates
+/history           # Prompt History Records, ADRs
+```
+
+### 14. Technology Stack
+
+| Layer | Technology | Constraint |
+|-------|------------|------------|
+| Frontend | Next.js 16+ (App Router) with Official ChatKit SDK | Must use ChatKit SDK |
+| Backend | Python FastAPI | Stateless design |
+| AI Provider | Cohere API | ONLY allowed API key |
+| MCP Layer | Official MCP SDK | Required for tool layer |
+| ORM | SQLModel | |
+| Database | Neon Serverless PostgreSQL | |
+| Authentication | Better Auth (JWT tokens) | |
+| Spec-Driven | Claude Code + Spec-Kit Plus | |
+
+### 15. Feature Progression
+
+#### Basic Level (Core Essentials):
+1. Add Task – AI creates new todo items via MCP tools
+2. Delete Task – AI removes tasks from the list via MCP tools
+3. Update Task – AI modifies existing task details via MCP tools
+4. View Task List – AI retrieves and displays tasks via MCP tools
+5. Mark as Complete – AI toggles task completion status via MCP tools
+
+#### Intermediate Level (Organization & Usability):
+1. Priorities & Tags/Categories – AI assigns levels or labels via MCP tools
+2. Search & Filter – AI searches by keyword; filters by status, priority, or date
+3. Sort Tasks – AI reorders tasks by due date, priority, or alphabetically
+
+#### Advanced Level (Intelligent Features):
+1. Recurring Tasks – AI auto-reschedules repeating tasks via MCP tools
+2. Due Dates & Time Reminders – AI sets deadlines with notifications
+
+### 16. MCP Tools Specification
+
+The MCP server must expose the following tools for the AI agent:
+
+#### Tool: add_task
+| Attribute | Value |
+|-----------|-------|
+| Purpose | Create a new task |
+| Parameters | user_id (string, required), title (string, required), description (string, optional) |
+| Returns | task_id, status, title |
+
+#### Tool: list_tasks
+| Attribute | Value |
+|-----------|-------|
+| Purpose | Retrieve tasks from the list |
+| Parameters | user_id (string, required), status (string, optional: "all", "pending", "completed") |
+| Returns | Array of task objects |
+
+#### Tool: complete_task
+| Attribute | Value |
+|-----------|-------|
+| Purpose | Mark a task as complete |
+| Parameters | user_id (string, required), task_id (integer, required) |
+| Returns | task_id, status, title |
+
+#### Tool: delete_task
+| Attribute | Value |
+|-----------|-------|
+| Purpose | Remove a task from the list |
+| Parameters | user_id (string, required), task_id (integer, required) |
+| Returns | task_id, status, title |
+
+#### Tool: update_task
+| Attribute | Value |
+|-----------|-------|
+| Purpose | Modify task title or description |
+| Parameters | user_id (string, required), task_id (integer, required), title (string, optional), description (string, optional) |
+| Returns | task_id, status, title |
+
+### 17. Chat API Endpoint
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/{user_id}/chat | Send message & get AI response |
+
+**Request:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| conversation_id | integer | No | Existing conversation ID (creates new if not provided) |
+| message | string | Yes | User's natural language message |
+
+**Response:**
+| Field | Type | Description |
+|-------|------|-------------|
+| conversation_id | integer | The conversation ID |
+| response | string | AI assistant's response |
+| tool_calls | array | List of MCP tools invoked |
+
+### 18. Agent Behavior Specification
+
+| Behavior | Description |
+|----------|-------------|
+| Task Creation | When user mentions adding/creating/remembering something, use add_task |
+| Task Listing | When user asks to see/show/list tasks, use list_tasks with appropriate filter |
+| Task Completion | When user says done/complete/finished, use complete_task |
+| Task Deletion | When user says delete/remove/cancel, use delete_task |
+| Task Update | When user says change/update/rename, use update_task |
+| Confirmation | Always confirm actions with friendly response |
+| Error Handling | Gracefully handle task not found and other errors |
+
+### 19. Natural Language Command Examples
+
+| User Says | Agent Should |
+|-----------|--------------|
+| "Add a task to buy groceries" | Call add_task with title "Buy groceries" |
+| "Show me all my tasks" | Call list_tasks with status "all" |
+| "What's pending?" | Call list_tasks with status "pending" |
+| "Mark task 3 as complete" | Call complete_task with task_id 3 |
+| "Delete the meeting task" | Call list_tasks first, then delete_task |
+| "Change task 1 to 'Call mom tonight'" | Call update_task with new title |
+| "I need to remember to pay bills" | Call add_task with title "Pay bills" |
+| "What have I completed?" | Call list_tasks with status "completed" |
+
+### 20. How to Create Specs
+
+#### 20.1 Specification Philosophy
+Specs define what, never how. Each spec answers:
+- Purpose
+- Inputs
+- Outputs
+- Constraints
+- Behavior rules
+
+#### 20.2 Required Spec Files
+```
+/specs
+ ├─ ai-chatbot/
+ │   ├─ agent.spec.md          # Cohere agent behavior
+ │   ├─ mcp-tools.spec.md      # MCP tool definitions
+ │   ├─ chat-api.spec.md       # Chat endpoint API
+ │   └─ voice-input.spec.md    # Voice input handling
+ ├─ features/
+ │   ├─ basic-crud.spec.md     # Basic AI task management
+ │   ├─ intermediate-org.spec.md # Organization features
+ │   └─ advanced-intel.spec.md # Intelligent features
+ └─ database/
+     └─ schema.spec.md         # Database models
+```
+
+### 21. How to Create the Plan (From Specs)
+
+#### 21.1 Planning Rules
+A plan is derived only after specs are frozen. Plan MUST:
+- Be sequential
+- Be tool-driven
+- Avoid implementation details
+
+#### 21.2 Example Plan Structure
+1. Initialize database schema for AI Chatbot
+2. Implement MCP tools for Cohere integration
+3. Configure Cohere API agent
+4. Build stateless chat endpoint
+5. Integrate ChatKit frontend
+6. Add voice input support
+7. Test conversation persistence
+
+### 22. Task Breakdown Rules
+
+Each plan step is broken into:
+- Atomic
+- Testable
+- Reversible tasks
+
+Example:
+Task: Implement add_task MCP tool for Cohere integration
+- Define input schema
+- Validate user_id
+- Persist task via SQLModel
+- Return structured output for Cohere agent
+
+### 23. Claude Code Execution Rule
+
+Claude Code SHALL:
+- Read AI Chatbot specs
+- Follow the AI-focused plan
+- Implement tasks with Cohere constraint
+- Never introduce logic not defined in specs
+- Iterate only through spec updates
+
+### 24. Constraints
+
+- Word Count Limit: This constitution is under 2500 words
+- No Manual Coding: All code via Claude Code prompts
+- Feature Phasing: Implement Basic → Intermediate → Advanced
+- Cohere-Only: Use ONLY Cohere API key for AI functionality
+- Testing: Unit (Pytest/Jest), Integration (API calls), E2E (conversation flows)
+- Dependencies: Minimal; no extra installs beyond stack
+- Scalability: Design for 1000+ users; use indexing in DB
+
+### 25. Success Criteria
+
+- Functionality: All AI Chatbot features work per specs; auth enforces isolation
+- UI/UX: ChatKit interface works smoothly, voice input functional
+- Cohere Integration: System works exclusively with Cohere API
+- Performance: Stateless design handles concurrent conversations
+
+### 26. Final Authority
+
+This constitution overrides:
+- README assumptions
+- Inline comments
+- Developer preferences
+
+If behavior is not specified here → it is out of scope.
+
+### 27. Evaluation Readiness
+
+This constitution ensures:
+- Clean separation of concerns
+- Proper use of official ChatKit SDK
+- Exclusive Cohere API integration
+- Full compliance with Phase III objectives
+- Transparent, judge-reviewable workflow
+
+**Version**: 2.0.0 | **Ratified**: 2026-01-11 | **Last Amended**: 2026-01-23

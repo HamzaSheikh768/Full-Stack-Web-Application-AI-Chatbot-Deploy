@@ -156,7 +156,7 @@ export class NotificationService {
 
       // Example API call (would be implemented on the backend):
       /*
-      await fetch('/api/notifications/email', {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

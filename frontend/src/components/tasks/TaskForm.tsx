@@ -12,7 +12,7 @@ interface TaskFormData {
   title: string;
   description?: string;
   priority: 'low' | 'medium' | 'high';
-  type?: 'daily' | 'weekly' | 'monthly';
+  type?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none';
   dueDate?: string;
 }
 
@@ -28,7 +28,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialData, is
     title: initialData?.title || '',
     description: initialData?.description || '',
     priority: initialData?.priority || 'medium',
-    type: initialData?.type?.toLowerCase() as 'daily' | 'weekly' | 'monthly' || 'daily',
+    type: initialData?.type?.toLowerCase() as 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none' || 'none',
     dueDate: initialData?.dueDate || '',
   });
 
@@ -140,14 +140,16 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialData, is
           {/* Type Field */}
           <div>
             <Label htmlFor="type">Type</Label>
-            <Select value={formData.type?.toUpperCase() || 'DAILY'} onValueChange={(value) => handleSelectChange('type')(value.toLowerCase())}>
+            <Select value={formData.type?.toUpperCase() || 'NONE'} onValueChange={(value) => handleSelectChange('type')(value.toLowerCase())}>
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="NONE">None</SelectItem>
                 <SelectItem value="DAILY">Daily</SelectItem>
                 <SelectItem value="WEEKLY">Weekly</SelectItem>
                 <SelectItem value="MONTHLY">Monthly</SelectItem>
+                <SelectItem value="YEARLY">Yearly</SelectItem>
               </SelectContent>
             </Select>
           </div>

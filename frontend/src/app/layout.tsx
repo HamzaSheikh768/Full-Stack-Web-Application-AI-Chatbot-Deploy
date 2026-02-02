@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ReactQueryProvider } from "@/providers/QueryProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/lib/theme";
 import "@/styles/globals.css";
 import Navbar from "@/components/navigation/Navbar";
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ['400', '500', '600', '700'],
-});
+const poppins = { className: "font-sans" }; // Fallback to system sans-serif
 
 export const metadata: Metadata = {
   title: {
@@ -64,19 +61,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.className} antialiased`}>
-        <ReactQueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Navbar />
-            <main className="pt-16 min-h-screen">{children}</main>
-            <Analytics />
-            <SpeedInsights />
-          </ThemeProvider>
-        </ReactQueryProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ReactQueryProvider>
+              <Navbar />
+              <main className="pt-16 min-h-screen">{children}</main>
+              <Analytics />
+              <SpeedInsights />
+            </ReactQueryProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Task } from '@/lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -9,11 +8,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { Plus } from 'lucide-react';
+import { taskApi } from '@/lib/api';
+import { Task as UiTask } from '@/types/task';
 
 interface TaskCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => void;
+  onCreate: (task: Omit<UiTask, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => void;
 }
 
 export function TaskCreationModal({ isOpen, onClose, onCreate }: TaskCreationModalProps) {
@@ -26,27 +27,36 @@ export function TaskCreationModal({ isOpen, onClose, onCreate }: TaskCreationMod
     recurrence: 'none' as 'none' | 'daily' | 'weekly',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newTask = {
       title: formData.title,
       description: formData.description || undefined,
-      status: 'pending', // Add the required status property
       priority: formData.priority,
-      type: formData.recurrence === 'none' ? 'daily' : formData.recurrence, // Map 'none' to 'daily' or use the recurrence value
       due_date: formData.due_date || undefined,
+      is_completed: false, // Default to not completed
+      recurrence_pattern: formData.recurrence, // Use recurrence field
     };
 
-    onCreate(newTask);
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'medium',
-      due_date: '',
-      tags: '',
-      recurrence: 'none',
-    });
+    try {
+      // Use the API to create the task
+      await taskApi.createTask(newTask);
+      // Close the modal after successful creation
+      onClose();
+      // Reset form data
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'medium',
+        due_date: '',
+        tags: '',
+        recurrence: 'none',
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert('Failed to create task. Please try again.');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

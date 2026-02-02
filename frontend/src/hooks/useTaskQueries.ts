@@ -8,12 +8,12 @@ const QUERY_KEYS = {
   task: (taskId: string) => ['task', taskId],
 };
 
-// Custom hook to get all tasks for the authenticated user
+// Custom hook to get all tasks
 export function useTasks() {
   return useQuery({
     queryKey: QUERY_KEYS.tasks(),
     queryFn: () => taskApi.getTasks(),
-    enabled: true, // Always enabled since user auth is handled by Better Auth
+    enabled: true, // Always enabled since no authentication is required
   });
 }
 
@@ -144,7 +144,7 @@ export function useUpdateTaskCompletion() {
 
   return useMutation({
     mutationFn: ({ taskId, completed }: { taskId: string; completed: boolean }) =>
-      taskApi.updateTaskCompletion(taskId),
+      taskApi.updateTaskCompletion(taskId, completed),
     onMutate: async ({ taskId, completed }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.task(taskId) });

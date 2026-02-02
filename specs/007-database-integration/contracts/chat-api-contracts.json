@@ -1,0 +1,119 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Todo AI Chatbot - Chat API",
+    "description": "API for AI-powered chat interface with database persistence",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/{user_id}/chat": {
+      "post": {
+        "summary": "Send message to AI assistant",
+        "description": "Process user message through AI assistant with database persistence",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the authenticated user",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "The user's message to the AI assistant",
+                    "example": "Add a task to buy groceries"
+                  },
+                  "conversation_id": {
+                    "type": "integer",
+                    "description": "Optional existing conversation ID (creates new if not provided)",
+                    "example": 123
+                  }
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response from AI assistant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversation_id": {
+                      "type": "integer",
+                      "description": "The conversation ID (newly created or existing)"
+                    },
+                    "response": {
+                      "type": "string",
+                      "description": "The AI assistant's response"
+                    },
+                    "tool_calls": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Name of the tool called"
+                          },
+                          "arguments": {
+                            "type": "object",
+                            "description": "Arguments passed to the tool"
+                          },
+                          "result": {
+                            "type": "object",
+                            "description": "Result from the tool call"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": ["conversation_id", "response", "tool_calls"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid input"
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing authentication"
+          },
+          "403": {
+            "description": "Forbidden - user does not have access to this resource"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

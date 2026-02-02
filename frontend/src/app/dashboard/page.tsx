@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { dashboardApi, taskApi } from '@/lib/api';
-import { Task } from '@/lib/api';
+import { dashboardApi } from '@/lib/api';
+import { taskApi } from '@/lib/api';
+import { Task as ApiTask } from '@/lib/api';
+import { TaskService } from '@/lib/task-service';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardData {
   total_tasks: number;
@@ -24,41 +27,113 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardData | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [tasksLoading, setTasksLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Define consistent colors for charts
   const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+  // Handler for editing a task
+  const handleEditTask = (task: ApiTask) => {
+    // In a real application, this would navigate to an edit task page or open a modal
+    console.log('Editing task:', task.id);
+    toast.info('Edit functionality would open task editor in a real application');
+  };
+
+  // Handler for deleting a task
+  const handleDeleteTask = async (taskId: string) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await TaskService.delete(taskId);
+        toast.success('Task deleted successfully');
+        // Refresh tasks after deletion
+        await fetchTasks();
+        // Also refresh stats since we removed a task
+        await fetchDashboardStats();
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        toast.error('Failed to delete task');
+      }
+    }
+  };
+
+  // Redirect to login if not authenticated
   useEffect(() => {
-    fetchDashboardStats();
-    fetchTasks();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchDashboardStats();
+      fetchTasks();
+    }
+  }, [isAuthenticated]);
 
   // Effect to fetch tasks when filters change
   useEffect(() => {
-    fetchTasks();
-  }, [searchQuery, filterStatus, filterPriority]);
+    if (isAuthenticated) {
+      fetchTasks();
+    }
+  }, [searchQuery, filterStatus, filterPriority, isAuthenticated]);
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await dashboardApi.getStats();
-      // The response should have the structure { success: boolean, data: DashboardData }
-      setStats(response.data);
+      // Calculate dashboard stats from user's tasks instead of calling a dedicated endpoint
+      const userTasks = await TaskService.getAll();
+
+      // Calculate statistics from tasks
+      const totalTasks = userTasks.length;
+      const completedTasks = userTasks.filter(task => task.is_completed).length;
+      const pendingTasks = totalTasks - completedTasks;
+
+      // Count task types (recurrence patterns)
+      const taskTypes: Record<string, number> = { none: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+      userTasks.forEach(task => {
+        const type = task.recurrence_pattern || 'none';
+        if (taskTypes.hasOwnProperty(type)) {
+          taskTypes[type]++;
+        } else {
+          taskTypes['none']++;
+        }
+      });
+
+      // Count task priorities
+      const taskPriorities: Record<string, number> = { low: 0, medium: 0, high: 0 };
+      userTasks.forEach(task => {
+        const priority = task.priority || 'medium';
+        if (taskPriorities.hasOwnProperty(priority)) {
+          taskPriorities[priority]++;
+        } else {
+          taskPriorities['medium']++;
+        }
+      });
+
+      const statsData = {
+        total_tasks: totalTasks,
+        completed_tasks: completedTasks,
+        pending_tasks: pendingTasks,
+        task_types: taskTypes,
+        task_priorities: taskPriorities
+      };
+
+      setStats(statsData);
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('Error calculating dashboard stats:', error);
       toast.error('Failed to load dashboard statistics');
       // Set empty stats to avoid showing error state but with real field names
       setStats({
         total_tasks: 0,
         completed_tasks: 0,
         pending_tasks: 0,
-        task_types: { daily: 0, weekly: 0, monthly: 0 },
+        task_types: { none: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 },
         task_priorities: { low: 0, medium: 0, high: 0 }
       });
     } finally {
@@ -70,26 +145,34 @@ export default function DashboardPage() {
     try {
       setTasksLoading(true);
 
-      // Fetch tasks from the API service with search and filter parameters
-      const response = await taskApi.getTasks({
-        ...(searchQuery && { search: searchQuery }),
-        ...(filterStatus && { completed: filterStatus === 'completed' }), // Convert status to completed boolean for API
-        ...(filterPriority && { priority: filterPriority })
-      });
+      // Fetch tasks using TaskService which handles field mapping
+      let allTasks = await TaskService.getAll();
 
-      // Extract tasks from the response structure - response could be an array or an object with data.tasks
-      if (response && typeof response === 'object' && 'data' in response && response.data) {
-        const responseData = response.data as { tasks?: Task[] };
-        if (responseData && typeof responseData === 'object' && 'tasks' in responseData) {
-          setTasks(responseData.tasks || []);
-        } else {
-          setTasks([]);
-        }
-      } else if (Array.isArray(response)) {
-        setTasks(response);
-      } else {
-        setTasks([]);
+      // Apply client-side filtering since the API parameters may not work as expected
+      if (searchQuery) {
+        const term = searchQuery.toLowerCase();
+        allTasks = allTasks.filter(task =>
+          task.title.toLowerCase().includes(term) ||
+          (task.description && task.description.toLowerCase().includes(term)) ||
+          task.priority.toLowerCase().includes(term) ||
+          task.type.toLowerCase().includes(term) ||
+          (task.due_date && task.due_date.toLowerCase().includes(term))
+        );
       }
+
+      if (filterStatus) {
+        if (filterStatus === 'completed') {
+          allTasks = allTasks.filter(task => task.status === 'completed');
+        } else if (filterStatus === 'pending') {
+          allTasks = allTasks.filter(task => task.status === 'pending');
+        }
+      }
+
+      if (filterPriority) {
+        allTasks = allTasks.filter(task => task.priority === filterPriority);
+      }
+
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Failed to load tasks');
@@ -150,8 +233,8 @@ export default function DashboardPage() {
   const COLORS = CHART_COLORS;
 
   return (
-    <div className="min-h-screen bg-background py-4 sm:py-8 fade-in-up">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+    <div className="min-h-screen bg-background py-6 fade-in-up">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 max-w-7xl">
         <div className="mb-8 sm:mb-12 fade-in-up" style={{ animationDelay: '0.1s' }}>
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Dashboard</h1>
           <p className="text-base sm:text-lg text-muted-foreground mt-2">Overview of your task statistics and productivity metrics</p>
@@ -312,13 +395,13 @@ export default function DashboardPage() {
                     <div
                       key={task.id}
                       className={`flex items-center justify-between p-3 border border-border rounded-lg transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
-                        task.status === 'completed' ? 'bg-green-50/30 dark:bg-green-900/20' : 'bg-background hover:bg-gray-50/50 dark:hover:bg-gray-800/50'
+                        task.is_completed ? 'bg-green-50/30 dark:bg-green-900/20' : 'bg-background hover:bg-gray-50/50 dark:hover:bg-gray-800/50'
                       } fade-in-up`}
                       style={{ animationDelay: `${0.8 + index * 0.1}s` }}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center flex-grow">
                         <div className={`h-3 w-3 rounded-full mr-3 ${
-                          task.status === 'completed'
+                          task.is_completed
                             ? 'bg-green-500'
                             : task.priority === 'high'
                               ? 'bg-red-500'
@@ -326,17 +409,40 @@ export default function DashboardPage() {
                                 ? 'bg-yellow-500'
                                 : 'bg-blue-500'
                         }`}></div>
-                        <span className={task.status === 'completed' ? 'line-through text-muted-foreground' : ''}>
+                        <span className={task.is_completed ? 'line-through text-muted-foreground' : ''}>
                           {task.title}
                         </span>
                       </div>
-                      <span className={`text-sm ${
-                        task.priority === 'high' ? 'text-red-600 dark:text-red-400' :
-                        task.priority === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-blue-600 dark:text-blue-400'
-                      }`}>
-                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-sm ${
+                          task.priority === 'high' ? 'text-red-600 dark:text-red-400' :
+                          task.priority === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                        </span>
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                          aria-label="Edit task"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="ml-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30"
+                          aria-label="Delete task"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -371,10 +477,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Task Priorities Chart */}
-          <Card className="bg-card border border-border rounded-xl p-6">
+          {/* Task Distribution Visualization - Donut Chart */}
+          <Card className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 fade-in-up" style={{ animationDelay: '0.8s' }}>
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Task Distribution by Priority</CardTitle>
+              <CardTitle className="text-lg font-semibold text-foreground">Task Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -383,21 +489,37 @@ export default function DashboardPage() {
                     data={priorityChartData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
+                    innerRadius={60}  /* Creating donut shape */
                     outerRadius={80}
-                    fill="#8884d8"
+                    paddingAngle={2}
                     dataKey="value"
                     label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : '0'}%`}
                   >
-                    {priorityChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    {priorityChartData.map((entry, index) => {
+                      // Map colors according to specification: High (red-blue mix), Medium (blue), Low (gray)
+                      let color;
+                      if (entry.name.toLowerCase() === 'high') {
+                        color = '#ef4444'; // red
+                      } else if (entry.name.toLowerCase() === 'medium') {
+                        color = '#3b82f6'; // blue
+                      } else if (entry.name.toLowerCase() === 'low') {
+                        color = '#6b7280'; // gray
+                      } else {
+                        // Fallback colors for other types
+                        const fallbackColors = ['#ef4444', '#3b82f6', '#6b7280']; // red, blue, gray
+                        color = fallbackColors[index % fallbackColors.length];
+                      }
+
+                      return <Cell key={`cell-${index}`} fill={color} />;
+                    })}
                   </Pie>
                   <Tooltip
+                    formatter={(value, name, props) => [`${value} tasks`, name]}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--background))',
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '0.5rem'
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}
                   />
                 </PieChart>

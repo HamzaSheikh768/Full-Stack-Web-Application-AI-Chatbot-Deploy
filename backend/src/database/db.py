@@ -1,72 +1,110 @@
-from sqlmodel import SQLModel
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from typing import AsyncGenerator
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import QueuePool, NullPool
+from sqlmodel import SQLModel
+from contextlib import contextmanager
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from root .env file
+# Load environment variables
 load_dotenv()
 
 # Get database URL from environment variables
-# Use Neon database if DATABASE_URL is set, otherwise fallback to SQLite for development
-DATABASE_URL_ENV = os.getenv("DATABASE_URL", "").strip('"\'')  # Remove quotes if present
-if DATABASE_URL_ENV and "postgresql" in DATABASE_URL_ENV:
-    # Use the Neon PostgreSQL database if properly configured
-    DATABASE_URL = DATABASE_URL_ENV
-else:
-    # Fallback to SQLite for local development without Neon
-    DATABASE_URL = "sqlite:///./taskapp_dev.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/db")
 
-# Ensure we're using the right driver for async operations
-if "postgresql" in DATABASE_URL and "+asyncpg" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-elif "sqlite" in DATABASE_URL and "+aiosqlite" not in DATABASE_URL:
-    # For SQLite, we'll use aiosqlite for async operations
-    DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+print(f"DEBUG: DATABASE_URL = {DATABASE_URL}")
 
-# Handle asyncpg-specific URL parameters - remove unsupported parameters
-if "postgresql+asyncpg://" in DATABASE_URL and "?" in DATABASE_URL:
-    base_url, query_params = DATABASE_URL.split('?', 1)
-    # Parse query parameters and remove unsupported ones for asyncpg
-    params_list = query_params.split('&')
-    filtered_params = [param for param in params_list
-                      if not param.startswith('sslmode=') and not param.startswith('channel_binding=')]
-    if filtered_params:
-        DATABASE_URL = f"{base_url}?{'&'.join(filtered_params)}"
-    else:
-        DATABASE_URL = base_url
+# For async engine with asyncpg for async operations
+# Remove channel_binding parameter as it's not supported by asyncpg
+if "channel_binding=" in DATABASE_URL:
+    import re
+    DATABASE_URL = re.sub(r'[&?]?channel_binding=[^&]*', '', DATABASE_URL)
+    # Ensure proper query separator
+    if "?" not in DATABASE_URL and "&" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("&", "?", 1)
 
-# Create async engine with connection settings optimized for Neon serverless PostgreSQL
+# Remove any problematic parameters that might cause DNS resolution issues
+if "?sslmode=require" in DATABASE_URL:
+    # For Neon, we might need to adjust SSL parameters
+    pass
+
+# Additional fix for Neon connection issues - remove channel_binding if present
+if "channel_binding=" in DATABASE_URL:
+    import re
+    # Remove channel_binding parameter entirely as it's causing SSL issues
+    DATABASE_URL = re.sub(r'[&?]channel_binding=[^&]*', '', DATABASE_URL)
+    # Clean up any double ?? or ?& that might have been created
+    DATABASE_URL = DATABASE_URL.replace('?&', '?').replace('??', '?')
+    # Ensure proper query separator if we removed the first parameter
+    if '?' not in DATABASE_URL and '&' in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace('&', '?', 1)
+
+# Replace postgresql:// with postgresql+asyncpg:// for async compatibility
+ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1) if DATABASE_URL.startswith("postgresql://") else DATABASE_URL
+ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1) if ASYNC_DATABASE_URL.startswith("postgres://") else ASYNC_DATABASE_URL
+
+# Sync engine for create_db_and_tables (using psycopg2)
+SYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1) if DATABASE_URL.startswith("postgresql://") else DATABASE_URL
+SYNC_DATABASE_URL = SYNC_DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1) if SYNC_DATABASE_URL.startswith("postgres://") else SYNC_DATABASE_URL
+
+# Create async engine for async operations
 async_engine = create_async_engine(
-    DATABASE_URL,
-    # Connection settings optimized for Neon serverless PostgreSQL
-    pool_size=2,  # Smaller pool for serverless
-    max_overflow=5,  # Limited overflow
-    pool_pre_ping=True,  # Verify connections before use (important for serverless)
-    pool_recycle=300,  # Recycle connections to prevent serverless timeout issues
-    echo=False  # Set to True for SQL query logging
+    ASYNC_DATABASE_URL,
+    # Neon Serverless optimized settings
+    poolclass=NullPool,   # Use NullPool for async engines
+    pool_pre_ping=True,   # Verify connections before use (critical for serverless)
+    pool_recycle=300,     # Recycle connections to prevent serverless timeout issues
+    echo=False            # Set to True for SQL query logging during development
 )
 
 # Create async session maker
 AsyncSessionLocal = sessionmaker(
-    async_engine,
+    bind=async_engine,
     class_=AsyncSession,
     expire_on_commit=False
 )
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get an async database session"""
+# Create sync engine for sync operations like table creation
+sync_engine = create_engine(
+    SYNC_DATABASE_URL,
+    # Neon Serverless optimized settings
+    poolclass=QueuePool,
+    pool_size=2,          # Small pool for serverless
+    max_overflow=5,       # Limited overflow
+    pool_pre_ping=True,   # Verify connections before use (critical for serverless)
+    pool_recycle=300,     # Recycle connections to prevent serverless timeout issues
+    echo=False            # Set to True for SQL query logging during development
+)
+
+# Create sync session maker
+SessionLocal = sessionmaker(
+    bind=sync_engine,
+    expire_on_commit=False
+)
+
+def get_db():
+    """Get a sync database session for FastAPI dependency injection"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+async def get_async_session():
+    """Get an async database session for FastAPI dependency injection"""
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.close()
 
-
-# Import models to register them with SQLModel metadata
+# Import all models to register them with SQLModel metadata
 from ..models.user import User
 from ..models.task import Task
+from ..models.conversation import Conversation, Message
 
-async def create_db_and_tables():
+def create_db_and_tables():
     """Create database tables"""
-    async with async_engine.begin() as conn:
-        # Use run_sync to execute the sync method create_all within an async context
-        await conn.run_sync(SQLModel.metadata.create_all)
+    # Create all tables defined in SQLModel models
+    SQLModel.metadata.create_all(bind=sync_engine)

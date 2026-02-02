@@ -13,36 +13,32 @@ env.bak/
 venv.bak/
 .python-version
 
-# Virtual environments
-.venv/
-venv/
-env/
-
-# FastAPI/Python
-*.log
-*.sqlite
-.local
-logs/
-
-# Next.js
-.next/
-out/
+# Builds
 build/
 dist/
-.nyc_output
-coverage/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp/
-.pnp.js
-web-build/
+*.egg
+*.egg-info/
+.installed.cfg
+*.egg-info/
 
-# dotenv environment variable files
+# Environment
+.env*
+.env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
+.envrc
+.env.localrc
+.secrets
+
+# Testing
+.coverage
+coverage/
+htmlcov/
+.nyc_output
+.pytest_cache/
+.hypothesis/
+.venv/
+.eggs/
 
 # IDE
 .vscode/
@@ -50,38 +46,36 @@ web-build/
 *.swp
 *.swo
 *~
+.vs/
+.atom/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Testing
-coverage/
-.coverage
-htmlcov/
-.pytest_cache/
-.hypothesis/
-
-# Docs
-docs/_build/
-
-# Distribution / packaging
-.pybuild/
-.tox/
-.nox/
-htmlcov/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+.DS_Store?
+ehthumbs.db
+Icon?
+desktop.ini
 *.log
-.git/
 
-# Local development settings
-.settings/
-dev.Dockerfile
+# Backend specific
+*.log
+*.sqlite
+.local
+logs/
+__pypackages__/
+
+# Frontend specific
+.next/
+out/
+.nuxt/
+public/build/
+.nx/
+
+# Database
+*.db
+*.db-journal
+.sqlite
 
 # Secrets
 secrets/
@@ -91,13 +85,64 @@ secrets/
 *.cert
 *.secret
 
+# Local development
+.debug/
+*.local
+.settings/
+
+# Coverage
+coverage.xml
+lcov.info
+
+# Documentation
+docs/_build/
+
+# Distribution / packaging
+.sass-cache/
+.wafpickle-N/
+*.so
+.libs/
+.pybuild/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor
+.idea/
+*.tmproj
+nbproject/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary folders
+tmp/
+temp/
+*.tmp
+
+# System
+Thumbs.db
+.DS_Store
+desktop.ini
+$RECYCLE.BIN/
+
 # Alembic
 alembic_version/
 
-# Database
-*.db
-*.db-journal
+# FastAPI
+uvicorn_access.log
+uvicorn_error.log
 
-# Temporary files
-*.tmp
-*.temp
+# Better Auth
+.better-auth/

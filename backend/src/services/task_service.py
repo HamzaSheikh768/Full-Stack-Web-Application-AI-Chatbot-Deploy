@@ -1,11 +1,11 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from sqlalchemy import or_
 from sqlalchemy.sql import func
-from ..models.task import Task, TaskPriority, TaskType
+from ..models.task import Task
 from ..models.user import User
 from pydantic import BaseModel
 
@@ -54,34 +54,30 @@ class TaskService:
             user_id=user_id,
             title=task_data.title,
             description=task_data.description,
-            is_completed=is_completed,
-            priority=task_data.priority.lower() if task_data.priority else "medium",
-            recurrence_pattern=recurrence_pattern,
-            due_date=task_data.due_date,
-            order_index="0"  # Default order index
+            completed=is_completed,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
         session.add(db_task)
         await session.commit()
         await session.refresh(db_task)
 
-        # Return response with reverse field mapping:
-        # DB 'is_completed' -> API 'status' (convert boolean to "completed"/"pending")
-        # DB 'recurrence_pattern' -> API 'type'
-        status = "completed" if db_task.is_completed else "pending"
-        task_type = db_task.recurrence_pattern or "daily"
+        # Return response with status mapping:
+        # DB 'completed' -> API 'status' (convert boolean to "completed"/"pending")
+        status = "completed" if db_task.completed else "pending"
 
         return TaskResponse(
-            id=str(db_task.id),  # Convert UUID to string
+            id=str(db_task.id),  # Convert to string
             title=db_task.title,
             description=db_task.description,
             status=status,
-            priority=db_task.priority,
-            type=task_type,
-            due_date=db_task.due_date,
+            priority="medium",  # Default priority since not in DB model
+            type="daily",      # Default type since not in DB model
+            due_date=None,     # Default due_date since not in DB model
             created_at=db_task.created_at,
             updated_at=db_task.updated_at,
-            user_id=str(db_task.user_id)  # Convert UUID to string
+            user_id=str(db_task.user_id)  # Convert to string
         )
 
     @staticmethod
@@ -92,22 +88,20 @@ class TaskService:
 
         if task:
             # Map database fields to API response:
-            # DB 'is_completed' -> API 'status' (convert boolean to "completed"/"pending")
-            # DB 'recurrence_pattern' -> API 'type'
-            status = "completed" if task.is_completed else "pending"
-            task_type = task.recurrence_pattern or "daily"
+            # DB 'completed' -> API 'status' (convert boolean to "completed"/"pending")
+            status = "completed" if task.completed else "pending"
 
             return TaskResponse(
-                id=str(task.id),  # Convert UUID to string
+                id=str(task.id),  # Convert to string
                 title=task.title,
                 description=task.description,
                 status=status,
-                priority=task.priority,
-                type=task_type,
-                due_date=task.due_date,
+                priority="medium",  # Default priority since not in DB model
+                type="daily",      # Default type since not in DB model
+                due_date=None,     # Default due_date since not in DB model
                 created_at=task.created_at,
                 updated_at=task.updated_at,
-                user_id=str(task.user_id)  # Convert UUID to string
+                user_id=str(task.user_id)  # Convert to string
             )
         return None
 
@@ -119,22 +113,20 @@ class TaskService:
 
         if task:
             # Map database fields to API response:
-            # DB 'is_completed' -> API 'status' (convert boolean to "completed"/"pending")
-            # DB 'recurrence_pattern' -> API 'type'
-            status = "completed" if task.is_completed else "pending"
-            task_type = task.recurrence_pattern or "daily"
+            # DB 'completed' -> API 'status' (convert boolean to "completed"/"pending")
+            status = "completed" if task.completed else "pending"
 
             return TaskResponse(
-                id=str(task.id),  # Convert UUID to string
+                id=str(task.id),  # Convert to string
                 title=task.title,
                 description=task.description,
                 status=status,
-                priority=task.priority,
-                type=task_type,
-                due_date=task.due_date,
+                priority="medium",  # Default priority since not in DB model
+                type="daily",      # Default type since not in DB model
+                due_date=None,     # Default due_date since not in DB model
                 created_at=task.created_at,
                 updated_at=task.updated_at,
-                user_id=str(task.user_id)  # Convert UUID to string
+                user_id=str(task.user_id)  # Convert to string
             )
         return None
 
@@ -213,44 +205,34 @@ class TaskService:
         if not task:
             return None
 
-        # Update only provided fields with proper mapping:
-        # API 'status' -> DB 'is_completed' (convert "completed"/"pending" to boolean)
-        # API 'type' -> DB 'recurrence_pattern'
+        # Update only provided fields:
         if task_update.title is not None:
             task.title = task_update.title
         if task_update.description is not None:
             task.description = task_update.description
         if task_update.status is not None:
-            task.is_completed = (task_update.status.lower() == "completed")
-        if task_update.priority is not None:
-            task.priority = task_update.priority.lower()
-        if task_update.type is not None:
-            task.recurrence_pattern = task_update.type.lower()
-        if task_update.due_date is not None:
-            task.due_date = task_update.due_date
+            task.completed = (task_update.status.lower() == "completed")
 
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(task)
 
-        # Return response with reverse field mapping:
-        # DB 'is_completed' -> API 'status' (convert boolean to "completed"/"pending")
-        # DB 'recurrence_pattern' -> API 'type'
-        status = "completed" if task.is_completed else "pending"
-        task_type = task.recurrence_pattern or "daily"
+        # Return response with status mapping:
+        # DB 'completed' -> API 'status' (convert boolean to "completed"/"pending")
+        status = "completed" if task.completed else "pending"
 
         return TaskResponse(
-            id=str(task.id),  # Convert UUID to string
+            id=str(task.id),  # Convert to string
             title=task.title,
             description=task.description,
             status=status,
-            priority=task.priority,
-            type=task_type,
-            due_date=task.due_date,
+            priority="medium",  # Default priority since not in DB model
+            type="daily",      # Default type since not in DB model
+            due_date=None,     # Default due_date since not in DB model
             created_at=task.created_at,
             updated_at=task.updated_at,
-            user_id=str(task.user_id)  # Convert UUID to string
+            user_id=str(task.user_id)  # Convert to string
         )
 
     @staticmethod
@@ -262,44 +244,34 @@ class TaskService:
         if not task:
             return None
 
-        # Update only provided fields with proper mapping:
-        # API 'status' -> DB 'is_completed' (convert "completed"/"pending" to boolean)
-        # API 'type' -> DB 'recurrence_pattern'
+        # Update only provided fields:
         if task_update.title is not None:
             task.title = task_update.title
         if task_update.description is not None:
             task.description = task_update.description
         if task_update.status is not None:
-            task.is_completed = (task_update.status.lower() == "completed")
-        if task_update.priority is not None:
-            task.priority = task_update.priority.lower()
-        if task_update.type is not None:
-            task.recurrence_pattern = task_update.type.lower()
-        if task_update.due_date is not None:
-            task.due_date = task_update.due_date
+            task.completed = (task_update.status.lower() == "completed")
 
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(task)
 
-        # Return response with reverse field mapping:
-        # DB 'is_completed' -> API 'status' (convert boolean to "completed"/"pending")
-        # DB 'recurrence_pattern' -> API 'type'
-        status = "completed" if task.is_completed else "pending"
-        task_type = task.recurrence_pattern or "daily"
+        # Return response with status mapping:
+        # DB 'completed' -> API 'status' (convert boolean to "completed"/"pending")
+        status = "completed" if task.completed else "pending"
 
         return TaskResponse(
-            id=str(task.id),  # Convert UUID to string
+            id=str(task.id),  # Convert to string
             title=task.title,
             description=task.description,
             status=status,
-            priority=task.priority,
-            type=task_type,
-            due_date=task.due_date,
+            priority="medium",  # Default priority since not in DB model
+            type="daily",      # Default type since not in DB model
+            due_date=None,     # Default due_date since not in DB model
             created_at=task.created_at,
             updated_at=task.updated_at,
-            user_id=str(task.user_id)  # Convert UUID to string
+            user_id=str(task.user_id)  # Convert to string
         )
 
     @staticmethod
@@ -313,7 +285,7 @@ class TaskService:
 
         # Toggle completion status (is_completed field in database)
         task.is_completed = not task.is_completed
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(task)
@@ -374,7 +346,7 @@ class TaskService:
 
         # Toggle completion status (is_completed field in database)
         task.is_completed = not task.is_completed
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(task)

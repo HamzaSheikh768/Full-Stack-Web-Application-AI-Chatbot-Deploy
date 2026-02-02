@@ -5,16 +5,16 @@ interface CreateTaskInput {
   title: string;
   description?: string;
   priority?: 'low' | 'medium' | 'high'; // Updated to match backend API
-  type?: 'daily' | 'weekly' | 'monthly'; // Backend expects lowercase values
+  type?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none'; // For compatibility with form, maps to recurrence_pattern
   dueDate?: string; // Using string format for API compatibility
 }
 
 interface UpdateTaskInput {
   title?: string;
   description?: string;
-  status?: string; // Updated to match backend API (pending, completed, etc.)
+  is_completed?: boolean; // Updated to match backend API (using is_completed instead of status)
   priority?: 'low' | 'medium' | 'high'; // Updated to match backend API
-  type?: 'daily' | 'weekly' | 'monthly'; // Updated to match backend API
+  type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'; // For compatibility with form, maps to recurrence_pattern
   due_date?: string; // Using string format for API compatibility
 }
 
@@ -23,7 +23,7 @@ interface UpdateTaskInput {
  */
 export class TaskService {
   /**
-   * Get all tasks (public access)
+   * Get all tasks (authenticated access)
    */
   static async getAll() {
     try {
@@ -36,7 +36,7 @@ export class TaskService {
   }
 
   /**
-   * Get a single task by ID
+   * Get a single task by ID (authenticated access)
    */
   static async getById(id: string) {
     try {
@@ -49,7 +49,7 @@ export class TaskService {
   }
 
   /**
-   * Create a new task
+   * Create a new task (authenticated access)
    */
   static async create(input: CreateTaskInput) {
     try {
@@ -57,9 +57,9 @@ export class TaskService {
       const taskData = {
         title: input.title,
         description: input.description || '',
-        status: 'pending', // Default to pending
+        is_completed: false, // Default to false (not completed)
         priority: input.priority || 'medium', // Default to medium
-        type: (input.type ? input.type.toLowerCase() : 'daily') as 'daily' | 'weekly' | 'monthly', // Send as type field that backend expects
+        recurrence_pattern: (input.type ? input.type.toLowerCase() : 'none') as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly', // Send as recurrence_pattern field that backend expects
         due_date: input.dueDate,
       };
 
@@ -72,7 +72,7 @@ export class TaskService {
   }
 
   /**
-   * Update an existing task
+   * Update an existing task (authenticated access)
    */
   static async update(id: string, input: Partial<UpdateTaskInput>) {
     try {
@@ -80,9 +80,9 @@ export class TaskService {
       const updateData: any = {};
       if (input.title !== undefined) updateData.title = input.title;
       if (input.description !== undefined) updateData.description = input.description;
-      if (input.status !== undefined) updateData.status = input.status;
+      if (input.is_completed !== undefined) updateData.is_completed = input.is_completed;
       if (input.priority !== undefined) updateData.priority = input.priority;
-      if (input.type !== undefined) updateData.type = input.type;
+      if (input.type !== undefined) updateData.recurrence_pattern = input.type;
       if (input.due_date !== undefined) updateData.due_date = input.due_date;
 
       const updatedTask = await taskApi.updateTask(id, updateData);
@@ -94,7 +94,7 @@ export class TaskService {
   }
 
   /**
-   * Delete a task
+   * Delete a task (authenticated access)
    */
   static async delete(id: string) {
     try {
@@ -107,12 +107,12 @@ export class TaskService {
   }
 
   /**
-   * Toggle task completion status
+   * Toggle task completion status (authenticated access)
    */
   static async toggleCompletion(id: string, completed: boolean) {
     try {
-      // The backend toggle endpoint just flips the current status, no need to pass status
-      const updatedTask = await taskApi.updateTaskCompletion(id);
+      // Pass the completion status to the API
+      const updatedTask = await taskApi.updateTaskCompletion(id, completed);
       return updatedTask;
     } catch (error) {
       console.error('Error updating task completion:', error);

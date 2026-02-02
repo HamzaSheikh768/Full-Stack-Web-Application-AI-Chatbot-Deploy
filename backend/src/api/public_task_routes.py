@@ -1,113 +1,174 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import Session
 from typing import List, Optional
-from ..database.db import get_async_session
-from ..services.task_service import TaskService
-from ..services.task_service import TaskCreate, TaskUpdate, TaskResponse
+from ..database.db import get_db
+from ..schemas import TaskCreate, TaskUpdate, TaskResponse
 from pydantic import BaseModel
+from sqlmodel import select
+from ..models.task import Task
 
-router = APIRouter(tags=["public-tasks"])
+router = APIRouter(prefix="/public", tags=["public-tasks"])
 
-@router.get("/", response_model=dict)
-async def get_all_tasks(
+@router.get("/tasks", response_model=dict)
+def get_all_tasks(
     status: Optional[str] = None,
     priority: Optional[str] = None,
     search: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    session: AsyncSession = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Get all tasks with optional filtering (public access).
     """
     try:
-        # Get tasks with filtering options
-        tasks, total_count = await TaskService.get_filtered_tasks(session, status, priority, search, limit, offset)
+        # Build query for all tasks
+        query = select(Task)
+
+        # Apply optional filters
+        filters = []
+        if status:
+            if status.lower() == "completed":
+                filters.append(Task.is_completed == True)
+            elif status.lower() == "pending":
+                filters.append(Task.is_completed == False)
+
+        if priority:
+            filters.append(Task.priority == priority.lower())
+
+        if search:
+            from sqlalchemy import or_
+            filters.append(
+                or_(
+                    Task.title.ilike(f"%{search}%"),
+                    Task.description.ilike(f"%{search}%") if search else False
+                )
+            )
+
+        if filters:
+            from sqlalchemy import and_
+            query = query.where(and_(*filters))
+
+        # Apply ordering and pagination
+        query = query.order_by(Task.created_at.desc()).offset(offset).limit(limit)
+
+        result = db.execute(query)
+        tasks = result.all()
+
+        # Get total count for pagination
+        count_query = select(Task)
+        if filters:
+            count_query = count_query.where(and_(*filters))
+        count_result = db.execute(count_query)
+        total_count = len(count_result.fetchall())
+
+        # Convert to response format
+        task_list = [
+            {
+                "id": str(task.id),
+                "user_id": str(task.user_id),
+                "title": task.title,
+                "description": task.description,
+                "is_completed": task.is_completed,
+                "priority": task.priority,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "recurrence_pattern": task.recurrence_pattern,
+                "order_index": task.order_index,
+                "created_at": task.created_at.isoformat(),
+                "updated_at": task.updated_at.isoformat()
+            }
+            for task in tasks
+        ]
 
         return {
             "success": True,
             "data": {
-                "tasks": tasks,
+                "tasks": task_list,
                 "total": total_count
             }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching tasks: {str(e)}")
 
-@router.post("/", response_model=TaskResponse)
-async def create_task(
-    task_data: TaskCreate,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    Create a new task (public access model).
-    """
-    # For public access model, assign a default user ID
-    default_user_id = "public-user"
-    task = await TaskService.create_task(task_data, default_user_id, session)
-    return task
-
-@router.get("/{task_id}", response_model=TaskResponse)
-async def get_task_by_id(
+@router.get("/tasks/{task_id}", response_model=TaskResponse)
+def get_task_by_id(
     task_id: str,
-    session: AsyncSession = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Get a specific task by ID (public access).
     """
-    task = await TaskService.get_task_by_id_public(task_id, session)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    try:
+        from sqlmodel import select
 
-@router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(
-    task_id: str,
-    task_update: TaskUpdate,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    Update a specific task by ID (public access model).
-    """
-    task = await TaskService.update_task_public(task_id, task_update, session)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+        statement = select(Task).where(Task.id == task_id)
+        result = db.execute(statement)
+        task = result.first()
 
-@router.patch("/{task_id}/complete", response_model=TaskResponse)
-async def toggle_task_completion(
-    task_id: str,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    Toggle the completion status of a task (public access model).
-    """
-    task = await TaskService.toggle_task_completion_public(task_id, session)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
 
-@router.get("/search", response_model=List[TaskResponse])
-async def search_tasks(
+        # Convert to response format
+        task_response = {
+            "id": str(task.id),
+            "user_id": str(task.user_id),
+            "title": task.title,
+            "description": task.description,
+            "is_completed": task.is_completed,
+            "priority": task.priority,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "recurrence_pattern": task.recurrence_pattern,
+            "order_index": task.order_index,
+            "created_at": task.created_at.isoformat(),
+            "updated_at": task.updated_at.isoformat()
+        }
+
+        return task_response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving task: {str(e)}")
+
+@router.get("/tasks/search", response_model=List[TaskResponse])
+def search_tasks(
     q: str,
-    session: AsyncSession = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Search tasks by title or description (public access).
     """
-    tasks = await TaskService.search_tasks(q, session)
-    return tasks
+    try:
+        from sqlmodel import select
+        from sqlalchemy import or_
 
+        query = select(Task).where(
+            or_(
+                Task.title.ilike(f"%{q}%"),
+                Task.description.ilike(f"%{q}%") if q else False
+            )
+        )
 
-@router.delete("/{task_id}")
-async def delete_task(
-    task_id: str,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    Delete a specific task by ID (public access model).
-    """
-    success = await TaskService.delete_task_public(task_id, session)
-    if not success:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return {"message": "Task deleted successfully"}
+        result = db.execute(query)
+        tasks = result.all()
+
+        # Convert to response format
+        task_list = [
+            {
+                "id": str(task.id),
+                "user_id": str(task.user_id),
+                "title": task.title,
+                "description": task.description,
+                "is_completed": task.is_completed,
+                "priority": task.priority,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "recurrence_pattern": task.recurrence_pattern,
+                "order_index": task.order_index,
+                "created_at": task.created_at.isoformat(),
+                "updated_at": task.updated_at.isoformat()
+            }
+            for task in tasks
+        ]
+
+        return task_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching tasks: {str(e)}")
