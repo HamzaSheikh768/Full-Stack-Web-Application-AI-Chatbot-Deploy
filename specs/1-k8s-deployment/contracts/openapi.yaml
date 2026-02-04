@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: Todo Chatbot API
+  description: API for the Todo Chatbot application deployed on Kubernetes
+  version: 1.0.0
+  contact:
+    name: Todo Chatbot Team
+    email: team@example.com
+
+servers:
+  - url: http://localhost:{port}/api
+    description: Local Minikube deployment
+    variables:
+      port:
+        default: "30000"
+        description: Port assigned by Minikube service
+
+paths:
+  /{user_id}/chat:
+    post:
+      summary: Send message to chatbot and receive response
+      description: Send a user message to the AI chatbot and receive an AI response with potential tool calls
+      operationId: sendMessage
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The ID of the user sending the message
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful response from the chatbot
+          content:
+            application/json:
+              schema:
+              $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: integer
+          description: Existing conversation ID (creates new if not provided)
+          example: 123
+        message:
+          type: string
+          description: User's natural language message
+          example: "Add a task to buy groceries"
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - response
+      properties:
+        conversation_id:
+          type: integer
+          description: The conversation ID
+          example: 123
+        response:
+          type: string
+          description: AI assistant's response
+          example: "I've added the task 'buy groceries' to your list."
+        tool_calls:
+          type: array
+          description: List of MCP tools invoked
+          items:
+            $ref: '#/components/schemas/ToolCall'
+
+    ToolCall:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the tool called
+          example: "add_task"
+        arguments:
+          type: object
+          description: Arguments passed to the tool
+          example:
+            user_id: "user123"
+            title: "buy groceries"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request format"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Chat
+    description: Chatbot interaction endpoints

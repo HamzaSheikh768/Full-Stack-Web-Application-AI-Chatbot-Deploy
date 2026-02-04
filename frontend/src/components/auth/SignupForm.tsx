@@ -64,7 +64,7 @@ export default function SignupForm() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-foreground">Full Name (Optional)</Label>
+            <Label htmlFor="name" className="text-foreground">Full Name</Label>
             <Input
               id="name"
               type="text"

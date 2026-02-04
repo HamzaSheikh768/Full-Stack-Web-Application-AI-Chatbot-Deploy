@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Moon, Sun, Menu, LogIn, User, LogOut } from 'lucide-react';
+import { Moon, Sun, Menu, LogIn, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/lib/theme';
+import ProfileDropdown from './ProfileDropdown';
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -89,20 +90,7 @@ const Navbar = () => {
                 </Link>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block">
-                  {user?.email?.split('@')[0]}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="flex items-center"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
+              <ProfileDropdown />
             )}
 
             {/* Theme Toggle */}
@@ -170,17 +158,7 @@ const Navbar = () => {
                     </div>
                   ) : (
                     <div className="pt-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                        Signed in as: {user?.email?.split('@')[0]}
-                      </p>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Logout
-                      </Button>
+                      <ProfileDropdown />
                     </div>
                   )}
 

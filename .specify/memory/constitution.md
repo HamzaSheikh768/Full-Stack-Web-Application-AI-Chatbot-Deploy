@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 → 1.0.0 (initial creation), (major architectural shift to AI Chatbot with Cohere-only constrain
-- Added sections: Phase III - AI Chatbot Architecture, Cohere API Constraint, MCP Tools Specification, Chat API Endpoint, Agent Behavior Specification
-- Removed sections: Traditional CRUD-focused UI Definition, Traditional Project Structure
-- Added principles: Spec-Driven Development, Modularity and Reusability, Security First, User-Centric Design, Efficiency, Visual Consistency
-- Added sections: Core Principles, Key Standards, Technology Stack, Feature Definitions, UI Definition, Constraints, Success Criteria
-- Templates requiring updates: ✅ All templates created align with new AI Chatbot 
-architecture
-- Follow-up TODOs: Update spec templates for AI Chatbot features
+- Version change: 2.0.0 → 3.0.0 (major architectural shift to AI Chatbot with Kubernetes deployment requirements)
+- Added sections: Phase IV - Local Kubernetes Deployment (Minikube, Helm Charts, kubectl-ai, Kagent, Docker Desktop, Gordon)
+- Added principles: AI-Native DevOps, Containerization-First Approach, Infrastructure-as-Code
+- Added sections: Kubernetes Architecture, Helm Chart Specifications, AI-Assisted Operations, Deployment Strategy
+- Templates requiring updates: ✅ All templates updated to align with new Kubernetes deployment architecture
+- Follow-up TODOs: Update spec templates for Kubernetes features
 -->
 
 # Todo Full-Stack Web Application Constitution
@@ -603,4 +601,270 @@ This constitution ensures:
 - Full compliance with Phase III objectives
 - Transparent, judge-reviewable workflow
 
-**Version**: 2.0.0 | **Ratified**: 2026-01-11 | **Last Amended**: 2026-01-23
+**Version**: 3.0.0 | **Ratified**: 2026-01-11 | **Last Amended**: 2026-02-03
+
+# Phase IV: Local Kubernetes Deployment Constitution
+
+## Core Principles (Kubernetes Deployment)
+
+### AI-Native DevOps
+All DevOps operations must be driven by AI agents (Gordon, kubectl-ai, kagent) rather than manual configuration. Kubernetes manifests, Helm charts, and deployment operations must be generated and managed through AI-assisted tools, following the Agentic Dev Stack Workflow: Spec → Plan → Tasks → Implement via AI agents.
+
+### Containerization-First Approach
+Applications must be containerized using Docker AI Agent (Gordon) with AI-generated Dockerfiles for both frontend and backend services. No manual Dockerfile creation is allowed. Containers must follow best practices for security, efficiency, and portability.
+
+### Infrastructure-as-Code with AI Assistance
+All infrastructure provisioning must be done through AI-generated Helm charts and Kubernetes manifests. Infrastructure changes must be version-controlled and managed through AI-assisted operations using kubectl-ai and kagent for deployment, scaling, and monitoring.
+
+### Local Kubernetes Focus
+Deployments must be targeted specifically to Minikube (local Kubernetes cluster) with AI-assisted orchestration. No cloud provider deployments (AWS/GCP/Azure) are allowed during this phase. Focus on local reproducible setups using Helm Charts and Minikube.
+
+## Phase IV – Local Kubernetes Deployment Requirements
+
+### 1. Purpose of This Addition
+This section defines the binding rules, architecture, and specifications for deploying the Phase III Todo AI Chatbot on a **local Kubernetes cluster** using **Minikube** and **Helm Charts**, while enforcing an **AI-native, agent-driven DevOps workflow**.
+
+Technology Stack for Deployment:
+- Containerization: Docker Desktop with Gordon (Docker AI Agent)
+- Orchestration: Kubernetes (Minikube)
+- Package Manager: Helm Charts
+- AI DevOps Tools: kubectl-ai, kagent
+- Application: Phase III Todo AI Chatbot
+
+### 2. Agentic Dev Stack Workflow for Kubernetes (Mandatory)
+All deployment activities must strictly follow the workflow below:
+1. Write Kubernetes Deployment Specifications
+2. Generate an Execution Plan for Kubernetes
+3. Break Plan into Atomic Kubernetes Tasks
+4. Implement via AI agents (Claude Code, Gordon, kubectl-ai, kagent)
+5. Iterate Using Specs (No Manual YAML/Dockerfile Authoring)
+
+Manual authoring of Dockerfiles, Kubernetes YAML, or Helm templates is **not allowed**. AI generation + iteration is required.
+
+### 3. System Objectives for Kubernetes Deployment
+The deployment system SHALL:
+- Containerize frontend and backend using Docker AI Agent (Gordon)
+- Generate Helm charts using kubectl-ai and/or kagent
+- Operate Kubernetes using AI-assisted tools (kubectl-ai, kagent)
+- Deploy and validate on Minikube (local Kubernetes cluster)
+- Demonstrate AI-native DevOps workflow with reproducible results
+
+### 4. Kubernetes Architecture Constitution
+
+#### 4.1 High-Level Kubernetes Architecture
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Docker AI   │    │  AI DevOps Ops   │    │  Minikube     │
+│   (Gordon)    │    │ (kubectl-ai,     │    │  (Local K8s)  │
+│               │    │  kagent)         │    │               │
+│  ┌─────────┐  │    │  ┌─────────────┐ │    │  ┌─────────┐  │
+│  │Frontend │  │    │  │Helm Charts  │ │    │  │Frontend │  │
+│  │Image    │  │───▶│  │(AI-Gen)     │ │───▶│  │Pod      │  │
+│  └─────────┘  │    │  └─────────────┘ │    │  └─────────┘  │
+│               │    │                  │    │               │
+│  ┌─────────┐  │    │  ┌─────────────┐ │    │  ┌─────────┐  │
+│  │Backend  │  │    │  │K8s Manifests│ │    │  │Backend  │  │
+│  │Image    │  │───▶│  │(AI-Gen)     │ │───▶│  │Pod      │  │
+│  └─────────┘  │    │  └─────────────┘ │    │  └─────────┘  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+#### 4.2 Constitutional Constraints for Kubernetes
+- No manual Dockerfile authoring (use Gordon only)
+- No manual Kubernetes YAML creation (use kubectl-ai/kagent)
+- No manual Helm chart creation (use kubectl-ai/kagent)
+- No cloud provider deployments (local Minikube only)
+- All operations must be AI-assisted
+- Deployment must be reproducible via documented commands
+
+### 5. Containerization Constitution (Docker AI - Gordon)
+
+#### 5.1 Docker AI Requirements
+The Docker AI Agent (Gordon) SHALL:
+- Generate Dockerfiles for Next.js frontend service
+- Generate Dockerfiles for FastAPI backend service
+- Follow security best practices (non-root users, minimal base images)
+- Optimize for size and build time
+- Include proper environment variable handling
+
+#### 5.2 Container Images
+- Frontend Image: todo-frontend
+- Backend Image: todo-backend
+- Images must be compatible with Kubernetes deployment
+- Include proper health checks and startup sequences
+
+### 6. Helm Chart Constitution (AI-Generated)
+
+#### 6.1 AI-Generated Helm Charts
+Helm charts MUST be generated via **kubectl-ai** and/or **kagent** with:
+- Deployment resources for frontend and backend
+- Service resources for network connectivity
+- Proper image references and tags
+- Configurable replica counts
+- Resource limits and requests
+- Environment variable configurations
+
+#### 6.2 Chart Requirements
+Charts SHALL include:
+- Proper namespace management
+- Configurable image pull policies
+- Health check configurations
+- Resource scaling specifications
+- Service exposure via LoadBalancer or NodePort
+
+### 7. Kubernetes Operations Constitution (AI-Assisted)
+
+#### 7.1 kubectl-ai Operations
+The kubectl-ai tool SHALL be used for:
+- Deploying applications to Minikube
+- Scaling deployments
+- Troubleshooting pod failures
+- Monitoring resource usage
+- Managing services and ingress
+
+#### 7.2 kagent Operations
+The kagent tool SHALL be used for:
+- Cluster health analysis
+- Resource optimization recommendations
+- Performance monitoring
+- Anomaly detection in deployments
+
+### 8. Minikube Constitution (Local Kubernetes)
+
+#### 8.1 Minikube Setup Requirements
+Minikube SHALL:
+- Run locally on development machine
+- Support Docker driver
+- Have sufficient resources allocated (CPU/RAM)
+- Support Helm chart installations
+- Allow service exposure via minikube service command
+
+#### 8.2 Local Deployment Constraints
+Deployments SHALL:
+- Target only local Minikube cluster
+- Not require external cloud resources
+- Be fully contained within local environment
+- Support reproducible setup via scripts
+- Allow easy cleanup and reset
+
+### 9. Development Workflow for Kubernetes
+
+#### 9.1 Kubernetes Deployment Process
+1. **Environment Setup**: Install Docker Desktop (with Gordon), Minikube, kubectl, Helm, kubectl-ai, kagent
+2. **Containerization**: Use Gordon to generate Dockerfiles and build images
+3. **Chart Generation**: Use kubectl-ai/kagent to generate Helm charts
+4. **Deployment**: Use Helm to install charts on Minikube
+5. **Validation**: Verify deployments using AI-assisted tools
+6. **Access**: Expose services via minikube service command
+
+#### 9.2 AI-Assisted Operations Examples
+```
+kubectl-ai "deploy the todo frontend with 2 replicas"
+kubectl-ai "scale the backend to handle more load"
+kubectl-ai "check why the pods are failing"
+kagent "analyze the cluster health"
+kagent "optimize resource allocation"
+```
+
+### 10. Project Structure for Kubernetes Deployment
+
+```
+/deployment                    # Kubernetes deployment artifacts
+  /docker                      # Docker-related configs (AI-generated)
+    /frontend                  # Frontend Dockerfile (Gordon-generated)
+    /backend                   # Backend Dockerfile (Gordon-generated)
+  /kubernetes                  # Kubernetes manifests (AI-generated)
+    /helm-charts               # Helm charts (kubectl-ai/kagent-generated)
+      /todo-frontend           # Frontend Helm chart
+      /todo-backend            # Backend Helm chart
+  /scripts                     # Deployment scripts (AI-assisted)
+    /setup-minikube.sh         # Minikube setup script
+    /deploy-all.sh             # Full deployment script
+    /validate-deployment.sh    # Validation script
+```
+
+### 11. Technology Stack for Deployment
+
+| Component        | Technology               | Constraint |
+|------------------|--------------------------|------------|
+| Containerization | Docker Desktop           | Gordon-enabled |
+| Docker AI        | Docker AI Agent (Gordon) | No manual Dockerfiles |
+| Orchestration    | Kubernetes (Minikube)    | Local cluster only |
+| Package Manager  | Helm Charts              | AI-generated only |
+| AI DevOps        | kubectl-ai, kagent       | AI-assisted ops |
+| Application      | Phase III Todo Chatbot   | Deploy as containers |
+
+### 12. Environment & Tooling Requirements (Windows)
+
+#### 12.1 Package Manager
+- **Chocolatey** for deterministic installs
+
+#### 12.2 Required Installations
+- Docker Desktop v4.53+ (Gordon enabled)
+- Minikube
+- kubectl
+- Helm
+- kubectl-ai
+- kagent (optional but recommended)
+
+#### 12.3 Installation Commands (AI-Assisted Verification)
+```
+docker --version
+kubectl version --client
+helm version
+minikube version
+kubectl-ai "hello"
+kagent "analyze cluster health"
+```
+
+### 13. Kubernetes Deployment Validation
+
+#### 13.1 Deployment Verification Steps
+1. Verify Minikube is running
+2. Verify Helm charts are properly generated
+3. Verify successful deployment of frontend and backend
+4. Verify service connectivity and accessibility
+5. Verify application functionality
+
+#### 13.2 Success Criteria for Deployment
+- Frontend & backend running on Minikube
+- Helm-based deployments verified
+- Demonstrated use of Gordon, kubectl-ai, and kagent
+- Reproducible setup via documented commands
+- Clear proof of AI-native DevOps workflow
+
+### 14. Evidence & Documentation Requirements
+
+#### 14.1 Required Documentation
+- AI prompts and outputs (Docker, Helm, kubectl)
+- Screenshots/logs of deployments and scaling
+- Issues encountered + AI-driven fixes
+- Performance metrics and optimization results
+
+#### 14.2 Submission Requirements
+- Complete deployment logs
+- Performance benchmarks
+- AI interaction transcripts
+- Final validation results
+
+### 15. Constraints for Phase IV
+
+- No cloud providers (AWS/GCP/Azure)
+- No manual YAML/Dockerfile authoring
+- Local execution only (Minikube)
+- AI-assisted operations mandatory
+- Reproducible setup required
+
+### 16. Success Criteria for Kubernetes Deployment
+
+- Docker images built successfully using Gordon
+- Helm charts generated and deployed using AI tools
+- Frontend and backend running on Minikube
+- Services accessible and functional
+- AI-native DevOps workflow demonstrated
+- Reproducible deployment process documented
+- Performance and resource utilization optimized
+
+### 17. Governance for Kubernetes Deployment
+
+All Kubernetes deployment activities must adhere to the AI-Native DevOps workflow. Changes to deployment configurations must be AI-assisted and properly documented. All deployments must follow the defined architecture and technology stack. Code reviews must verify compliance with all Kubernetes deployment principles and standards defined in this constitution.
