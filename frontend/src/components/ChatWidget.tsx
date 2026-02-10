@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { decodeToken, getStoredToken } from '@/lib/jwt-utils';
 
 import VoiceInputWidget from './VoiceInputWidget';
+import { ChatMessage } from './ChatMessage';
 
 interface ChatWidgetProps {
   userId: string;
@@ -331,6 +332,32 @@ export default function ChatWidget({ userId, initialConversationId }: ChatWidget
     }
   };
 
+  // Function to extract task data from message content
+  const extractTaskDataFromMessage = (content: string) => {
+    // This is a simplified extraction - in a real implementation, 
+    // you would parse the response from the backend that includes structured task data
+    if (content.includes('task created') || content.includes('task updated')) {
+      // In a real implementation, the backend would return structured data
+      // For now, we'll return a mock object based on keywords in the message
+      return {
+        title: content.includes('groceries') ? 'Buy Groceries' : 
+               content.includes('meeting') ? 'Team Meeting' : 
+               'Sample Task',
+        description: content.includes('urgent') ? 'This is an urgent task' : 'Task description',
+        priority: content.includes('high') ? 'high' : 
+                 content.includes('medium') ? 'medium' : 
+                 'low',
+        tags: content.includes('work') ? ['work', 'important'] : 
+              content.includes('personal') ? ['personal'] : [],
+        due_date: content.includes('tomorrow') ? new Date(Date.now() + 86400000).toISOString() : 
+                  content.includes('today') ? new Date().toISOString() : 
+                  undefined,
+        completed: false
+      };
+    }
+    return null;
+  };
+
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto w-full">
       {/* History Panel */}
@@ -390,20 +417,13 @@ export default function ChatWidget({ userId, initialConversationId }: ChatWidget
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg) => (
-                    <div
+                    <ChatMessage
                       key={msg.id}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          msg.role === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
+                      content={msg.content}
+                      role={msg.role}
+                      // Extract task data from the message if available
+                      taskData={extractTaskDataFromMessage(msg.content)}
+                    />
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">

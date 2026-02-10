@@ -40,6 +40,11 @@ if "channel_binding=" in DATABASE_URL:
     if '?' not in DATABASE_URL and '&' in DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace('&', '?', 1)
 
+# Additional fix for Neon - remove unsupported parameters
+if "?options=" in DATABASE_URL:
+    import re
+    DATABASE_URL = re.sub(r'[&?]?options=[^&]*', '', DATABASE_URL)
+
 # Replace postgresql:// with postgresql+asyncpg:// for async compatibility
 ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1) if DATABASE_URL.startswith("postgresql://") else DATABASE_URL
 ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1) if ASYNC_DATABASE_URL.startswith("postgres://") else ASYNC_DATABASE_URL
@@ -47,6 +52,21 @@ ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("postgres://", "postgresql+async
 # Sync engine for create_db_and_tables (using psycopg2)
 SYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1) if DATABASE_URL.startswith("postgresql://") else DATABASE_URL
 SYNC_DATABASE_URL = SYNC_DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1) if SYNC_DATABASE_URL.startswith("postgres://") else SYNC_DATABASE_URL
+
+# For Neon, we may need to add specific parameters for better compatibility
+if "neon.tech" in ASYNC_DATABASE_URL and "pooler" in ASYNC_DATABASE_URL:
+    # Add Neon-specific parameters if not already present
+    if "sslmode=" not in ASYNC_DATABASE_URL:
+        ASYNC_DATABASE_URL += "&sslmode=require"
+    if "connect_timeout=" not in ASYNC_DATABASE_URL:
+        ASYNC_DATABASE_URL += "&connect_timeout=10"
+
+if "neon.tech" in SYNC_DATABASE_URL and "pooler" in SYNC_DATABASE_URL:
+    # Add Neon-specific parameters if not already present
+    if "sslmode=" not in SYNC_DATABASE_URL:
+        SYNC_DATABASE_URL += "&sslmode=require"
+    if "connect_timeout=" not in SYNC_DATABASE_URL:
+        SYNC_DATABASE_URL += "&connect_timeout=10"
 
 # Create async engine for async operations
 async_engine = create_async_engine(
@@ -98,11 +118,6 @@ async def get_async_session():
             yield session
         finally:
             await session.close()
-
-# Import all models to register them with SQLModel metadata
-from ..models.user import User
-from ..models.task import Task
-from ..models.conversation import Conversation, Message
 
 def create_db_and_tables():
     """Create database tables"""

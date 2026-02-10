@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DateTimePicker } from '@/components/DateTimePicker';
+import { ReminderConfig } from '@/components/ReminderConfig';
 
 interface TaskFormData {
   title: string;
@@ -14,6 +16,11 @@ interface TaskFormData {
   priority: 'low' | 'medium' | 'high';
   type?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none';
   dueDate?: string;
+  tags?: string[];
+  remindAt?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: any;
+  nextDueDate?: string;
 }
 
 interface TaskFormProps {
@@ -30,7 +37,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialData, is
     priority: initialData?.priority || 'medium',
     type: initialData?.type?.toLowerCase() as 'daily' | 'weekly' | 'monthly' | 'yearly' | 'none' || 'none',
     dueDate: initialData?.dueDate || '',
+    tags: initialData?.tags || [],
+    remindAt: initialData?.remindAt || '',
+    isRecurring: initialData?.isRecurring || false,
+    recurrencePattern: initialData?.recurrencePattern || null,
+    nextDueDate: initialData?.nextDueDate || '',
   });
+
+  const [reminderEnabled, setReminderEnabled] = useState(!!initialData?.remindAt);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -46,6 +60,24 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialData, is
         return newErrors;
       });
     }
+  };
+
+  const handleDueDateChange = (date: string) => {
+    setFormData(prev => ({ ...prev, dueDate: date }));
+  };
+
+  const handleReminderEnabledChange = (enabled: boolean) => {
+    setReminderEnabled(enabled);
+    if (!enabled) {
+      setFormData(prev => ({ ...prev, remindAt: '' }));
+    } else if (!formData.remindAt && formData.dueDate) {
+      // Set reminder to same time as due date when enabled
+      setFormData(prev => ({ ...prev, remindAt: prev.dueDate || '' }));
+    }
+  };
+
+  const handleReminderTimeChange = (time: string) => {
+    setFormData(prev => ({ ...prev, remindAt: time }));
   };
 
   const handleSelectChange = (name: keyof TaskFormData) => (value: string) => {
@@ -157,13 +189,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialData, is
           {/* Due Date Field */}
           <div>
             <Label htmlFor="dueDate">Due Date</Label>
-            <Input
-              id="dueDate"
-              name="dueDate"
-              type="datetime-local"
-              value={formData.dueDate}
-              onChange={handleChange}
-              placeholder="Select due date (optional)"
+            <DateTimePicker
+              value={formData.dueDate || ''}
+              onChange={handleDueDateChange}
+              placeholder="Select due date and time (optional)"
+            />
+          </div>
+
+          {/* Reminder Configuration */}
+          <div>
+            <ReminderConfig
+              reminderEnabled={reminderEnabled}
+              reminderTime={formData.remindAt || formData.dueDate || ''}
+              onReminderEnabledChange={handleReminderEnabledChange}
+              onReminderTimeChange={handleReminderTimeChange}
             />
           </div>
 

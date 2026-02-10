@@ -1,0 +1,55 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: todo-pubsub
+  namespace: default
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+  # Redis connection settings
+  - name: redisHost
+    value: localhost:6379
+  - name: redisPassword
+    secretKeyRef:
+      name: redis-secret
+      key: password
+  # Optional: Use Redis Streams for better ordering
+  - name: enableTLS
+    value: "false"
+  - name: maxRetries
+    value: "3"
+  - name: maxRetryBackoff
+    value: "5s"
+  # Consumer group for task events
+  - name: consumerID
+    value: "todo-backend"
+scopes:
+- todo-backend
+- notification-service
+- recurring-service
+---
+# Alternative: Kafka/Redpanda configuration (preferred for production)
+# apiVersion: dapr.io/v1alpha1
+# kind: Component
+# metadata:
+#   name: todo-pubsub
+#   namespace: default
+# spec:
+#   type: pubsub.kafka
+#   version: v1
+#   metadata:
+#   - name: brokers
+#     value: "localhost:9092"
+#   - name: consumerGroup
+#     value: "todo-consumers"
+#   - name: authType
+#     value: "none"
+#   - name: maxMessageBytes
+#     value: "1024000"
+#   - name: version
+#     value: "2.8.0"
+# scopes:
+# - todo-backend
+# - notification-service
+# - recurring-service

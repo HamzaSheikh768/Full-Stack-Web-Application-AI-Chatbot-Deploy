@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { TaskItem } from './TaskItem';
 import { TaskFilters } from './TaskFilters';
-import { Button } from '../ui/button';
-import { Skeleton } from '../ui/skeleton';
+import { SortControls } from '@/components/SortControls';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus } from 'lucide-react';
 import { Task as ApiTask } from '@/lib/api';
 
@@ -17,21 +18,30 @@ interface TaskListProps {
   onAddTaskClick: () => void;
 }
 
-export function TaskList({
+const TaskListComponent = ({ 
   tasks,
   loading = false,
   onTaskUpdate,
   onTaskDelete,
   onTaskToggleComplete,
   onAddTaskClick
-}: TaskListProps) {
+}: TaskListProps) => {
   const [filteredTasks, setFilteredTasks] = useState<ApiTask[]>(tasks);
   const [filters, setFilters] = useState({
-    status: undefined as 'completed' | 'pending' | undefined,
-    priority: '',
-    dueDate: '',
+    status: 'all',
+    priority: 'all',
+    tags: [] as string[],
+    dueDateFrom: '',
+    dueDateTo: '',
     search: ''
   });
+  const [sortBy, setSortBy] = useState('due_at'); // Default sort by due date
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Extract unique tags from tasks for the filter component
+  const availableTags = Array.from(
+    new Set(tasks.flatMap(task => task.tags || []))
+  );
 
   // Subscribe to real-time updates from AI Chat
   useEffect(() => {
@@ -76,20 +86,43 @@ export function TaskList({
     };
   }, []);
 
-  // Apply filters when tasks or filters change
+  // Apply filters and sorting when tasks, filters, or sort options change
   useEffect(() => {
     let result = [...tasks];
 
     // Apply status filter
-    if (filters.status !== undefined) {
+    if (filters.status !== 'all') {
       result = result.filter(task =>
         filters.status === 'completed' ? task.status === 'completed' : task.status !== 'completed'
       );
     }
 
     // Apply priority filter
-    if (filters.priority) {
+    if (filters.priority !== 'all') {
       result = result.filter(task => task.priority?.toLowerCase() === filters.priority.toLowerCase());
+    }
+
+    // Apply tags filter
+    if (filters.tags.length > 0) {
+      result = result.filter(task => 
+        task.tags && filters.tags.some(tag => task.tags?.includes(tag))
+      );
+    }
+
+    // Apply due date from filter
+    if (filters.dueDateFrom) {
+      const fromDate = new Date(filters.dueDateFrom);
+      result = result.filter(task => 
+        task.due_date && new Date(task.due_date) >= fromDate
+      );
+    }
+
+    // Apply due date to filter
+    if (filters.dueDateTo) {
+      const toDate = new Date(filters.dueDateTo);
+      result = result.filter(task => 
+        task.due_date && new Date(task.due_date) <= toDate
+      );
     }
 
     // Apply search filter
@@ -97,12 +130,44 @@ export function TaskList({
       const searchTerm = filters.search.toLowerCase();
       result = result.filter(task =>
         task.title.toLowerCase().includes(searchTerm) ||
-        (task.description && task.description.toLowerCase().includes(searchTerm))
+        (task.description && task.description.toLowerCase().includes(searchTerm)) ||
+        (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
       );
     }
 
+    // Apply sorting
+    result.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (sortBy) {
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'priority':
+          // Define priority order: high > medium > low
+          const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+          aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+          bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+          break;
+        case 'due_at':
+          aValue = a.due_date ? new Date(a.due_date).getTime() : Infinity; // Unset due dates go last
+          bValue = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     setFilteredTasks(result);
-  }, [tasks, filters]);
+  }, [tasks, filters, sortBy, sortOrder]);
 
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters);
@@ -127,7 +192,20 @@ export function TaskList({
         </Button>
       </div>
 
-      <TaskFilters filters={filters} onFilterChange={handleFilterChange} />
+      <TaskFilters 
+        filters={filters} 
+        onFilterChange={handleFilterChange} 
+        availableTags={availableTags}
+      />
+
+      <SortControls 
+        sortBy={sortBy} 
+        sortOrder={sortOrder} 
+        onSortChange={(newSortBy, newSortOrder) => {
+          setSortBy(newSortBy);
+          setSortOrder(newSortOrder);
+        }} 
+      />
 
       <div className="space-y-4">
         {filteredTasks.length === 0 ? (
@@ -140,7 +218,7 @@ export function TaskList({
           </div>
         ) : (
           filteredTasks.map(task => (
-            <TaskItem
+            <MemoizedTaskItem
               key={task.id}
               task={task}
               onUpdate={onTaskUpdate}
@@ -152,4 +230,8 @@ export function TaskList({
       </div>
     </div>
   );
-}
+};
+
+const MemoizedTaskItem = memo(TaskItem);
+
+export { TaskListComponent as TaskList };

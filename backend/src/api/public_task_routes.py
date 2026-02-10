@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from ..database.db import get_db
 from ..schemas import TaskCreate, TaskUpdate, TaskResponse
 from pydantic import BaseModel
@@ -23,6 +23,9 @@ def get_all_tasks(
     """
     try:
         # Build query for all tasks
+        from sqlmodel import select
+        from sqlalchemy import and_, or_
+
         query = select(Task)
 
         # Apply optional filters
@@ -37,7 +40,6 @@ def get_all_tasks(
             filters.append(Task.priority == priority.lower())
 
         if search:
-            from sqlalchemy import or_
             filters.append(
                 or_(
                     Task.title.ilike(f"%{search}%"),
@@ -46,21 +48,20 @@ def get_all_tasks(
             )
 
         if filters:
-            from sqlalchemy import and_
             query = query.where(and_(*filters))
 
         # Apply ordering and pagination
         query = query.order_by(Task.created_at.desc()).offset(offset).limit(limit)
 
         result = db.execute(query)
-        tasks = result.all()
+        tasks = result.scalars().all()
 
         # Get total count for pagination
         count_query = select(Task)
         if filters:
             count_query = count_query.where(and_(*filters))
         count_result = db.execute(count_query)
-        total_count = len(count_result.fetchall())
+        total_count = count_result.scalar()
 
         # Convert to response format
         task_list = [
@@ -103,7 +104,7 @@ def get_task_by_id(
 
         statement = select(Task).where(Task.id == task_id)
         result = db.execute(statement)
-        task = result.first()
+        task = result.scalar_one_or_none()
 
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
@@ -114,7 +115,7 @@ def get_task_by_id(
             "user_id": str(task.user_id),
             "title": task.title,
             "description": task.description,
-            "is_completed": task.is_completed,
+            "is_completed": task.completed,
             "priority": task.priority,
             "due_date": task.due_date.isoformat() if task.due_date else None,
             "recurrence_pattern": task.recurrence_pattern,
@@ -149,7 +150,7 @@ def search_tasks(
         )
 
         result = db.execute(query)
-        tasks = result.all()
+        tasks = result.scalars().all()
 
         # Convert to response format
         task_list = [
@@ -172,3 +173,19 @@ def search_tasks(
         return task_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching tasks: {str(e)}")
+
+
+@router.get("/test", response_model=Dict[str, Any])
+def test_endpoint():
+    """
+    Simple test endpoint to verify public routes work.
+    """
+    return {"success": True, "message": "Public route is working!"}
+
+
+@router.get("/health-check", response_model=dict)
+def health_check():
+    """
+    Health check endpoint that definitely does not require auth.
+    """
+    return {"status": "healthy", "message": "Public route working"}

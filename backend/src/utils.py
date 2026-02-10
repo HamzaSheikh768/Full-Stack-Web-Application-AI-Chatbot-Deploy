@@ -8,26 +8,87 @@ import bcrypt
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-def calculate_next_occurrence(due_date: datetime, recurrence_pattern: str) -> Optional[datetime]:
+def calculate_next_occurrence(due_date: datetime, recurrence_pattern) -> Optional[datetime]:
     """
     Calculate the next occurrence date based on the recurrence pattern
+    Supports both simple string patterns and complex RFC 5545-inspired patterns
 
     Args:
         due_date: Original due date
-        recurrence_pattern: 'none', 'daily', or 'weekly'
+        recurrence_pattern: Either a string ('none', 'daily', 'weekly') or a dict with pattern details
 
     Returns:
         New datetime for next occurrence or None if no recurrence
     """
-    if recurrence_pattern == "none":
+    # Handle None or 'none' pattern
+    if recurrence_pattern is None or recurrence_pattern == "none":
         return None
-    elif recurrence_pattern == "daily":
-        return due_date + timedelta(days=1)
-    elif recurrence_pattern == "weekly":
-        return due_date + timedelta(days=7)
-    else:
-        # Unknown recurrence pattern, return None
-        return None
+
+    # Handle simple string patterns (backward compatibility)
+    if isinstance(recurrence_pattern, str):
+        if recurrence_pattern == "daily":
+            return due_date + timedelta(days=1)
+        elif recurrence_pattern == "weekly":
+            return due_date + timedelta(days=7)
+        elif recurrence_pattern == "monthly":
+            # Add approximately one month (30 days)
+            return due_date + timedelta(days=30)
+        elif recurrence_pattern == "yearly":
+            return due_date + timedelta(days=365)
+        else:
+            return None
+
+    # Handle complex pattern (dict)
+    if isinstance(recurrence_pattern, dict):
+        pattern_type = recurrence_pattern.get('type', 'none')
+        interval = recurrence_pattern.get('interval', 1)
+        end_date_str = recurrence_pattern.get('end_date')
+        exceptions = recurrence_pattern.get('exceptions', [])
+
+        # Check if we've reached the end date
+        if end_date_str:
+            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+            if due_date >= end_date:
+                return None
+
+        # Calculate next occurrence based on type
+        if pattern_type == 'daily':
+            next_date = due_date + timedelta(days=interval)
+        elif pattern_type == 'weekly':
+            days_of_week = recurrence_pattern.get('days_of_week', [])
+            if days_of_week:
+                # Find next occurrence on specified days of week
+                next_date = due_date + timedelta(days=1)
+                days_map = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                           'friday': 4, 'saturday': 5, 'sunday': 6}
+                target_days = [days_map.get(d.lower(), -1) for d in days_of_week if d.lower() in days_map]
+
+                # Find next matching day
+                for _ in range(7):
+                    if next_date.weekday() in target_days:
+                        break
+                    next_date += timedelta(days=1)
+            else:
+                next_date = due_date + timedelta(weeks=interval)
+        elif pattern_type == 'monthly':
+            day_of_month = recurrence_pattern.get('day_of_month', due_date.day)
+            # Add months (approximate)
+            next_date = due_date + timedelta(days=30 * interval)
+            # Adjust to correct day of month if specified
+            if day_of_month:
+                next_date = next_date.replace(day=min(day_of_month, 28))  # Safe day
+        elif pattern_type == 'yearly':
+            next_date = due_date + timedelta(days=365 * interval)
+        else:
+            return None
+
+        # Skip exceptions
+        while next_date.strftime('%Y-%m-%d') in exceptions:
+            next_date += timedelta(days=1)
+
+        return next_date
+
+    return None
 
 
 def get_next_occurrence_from_now(recurrence_pattern: str) -> Optional[datetime]:

@@ -12,7 +12,14 @@ import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database tables on startup"""
-    create_db_and_tables()  # Sync function call
+    try:
+        # Attempt to initialize database tables with timeout/error handling
+        # Since we've already run migrations, we may not need this during startup
+        # Only run if needed, and handle potential connection issues gracefully
+        create_db_and_tables()  # Sync function call
+    except Exception as e:
+        print(f"Warning: Could not initialize database tables on startup: {e}")
+        # Continue starting the app even if DB initialization fails
     yield
     # Shutdown operations would go here
 
@@ -49,15 +56,15 @@ app.add_middleware(LoggingMiddleware)
 
 
 
-# Include task routes - authenticated access
-# Using /api prefix so routes like /api/{user_id}/tasks work correctly
-app.include_router(task_routes.router, prefix="/api", tags=["tasks"])
-
 # Include public task routes for dashboard and public access
-app.include_router(public_task_routes.router, prefix="/api/public", tags=["public-tasks"])
+app.include_router(public_task_routes.router, prefix="/api", tags=["public-tasks"])
 
 # Include dashboard routes
 app.include_router(dashboard_routes.router, prefix="/api", tags=["dashboard"])
+
+# Include task routes - authenticated access
+# Routes now have full path structure like /users/{user_id}/tasks
+app.include_router(task_routes.router, prefix="/api", tags=["tasks"])
 
 
 

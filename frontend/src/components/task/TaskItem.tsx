@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Checkbox } from '../ui/checkbox';
-import { Card, CardContent, CardFooter } from '../ui/card';
-import { Calendar, Flag, Tag, Edit3, Trash2, Save, X } from 'lucide-react';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Calendar, Flag, Tag as TagIcon, Edit3, Trash2, Save, X, Bell } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { isOverdue } from '@/lib/utils';
 import { Task as ApiTask } from '@/lib/api';
 import { taskApi } from '@/lib/api';
@@ -27,9 +27,16 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
     description: task.description || "",
     priority: task.priority,
     due_date: task.due_date || "",
+    tags: task.tags || [], // Added tags
+    remind_at: task.remind_at || "", // Added reminder
+    is_recurring: task.is_recurring || false, // Added recurring flag
+    recurrence_pattern_details: task.recurrence_pattern_details || null, // Added recurrence details
+    next_due_date: task.next_due_date || "", // Added next due date
     status: task.status || "pending", // Add required status field
     type: task.type || "daily", // Add required type field
   });
+
+  const [newTag, setNewTag] = useState(""); // For adding new tags
 
   const handleSave = async () => {
     try {
@@ -39,6 +46,11 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
         description: editedTask.description,
         priority: editedTask.priority as 'low' | 'medium' | 'high',
         due_date: editedTask.due_date || undefined,
+        tags: editedTask.tags, // Include tags in update
+        remind_at: editedTask.remind_at || undefined, // Include reminder in update
+        is_recurring: editedTask.is_recurring, // Include recurring flag in update
+        recurrence_pattern_details: editedTask.recurrence_pattern_details, // Include recurrence details in update
+        next_due_date: editedTask.next_due_date || undefined, // Include next due date in update
       });
 
       onUpdate(updatedTask);
@@ -55,10 +67,60 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
       description: task.description || "",
       priority: task.priority,
       due_date: task.due_date || "",
+      tags: task.tags || [], // Reset tags
+      remind_at: task.remind_at || "", // Reset reminder
+      is_recurring: task.is_recurring || false, // Reset recurring flag
+      recurrence_pattern_details: task.recurrence_pattern_details || null, // Reset recurrence details
+      next_due_date: task.next_due_date || "", // Reset next due date
       status: task.status || "pending",
       type: task.type || "daily",
     });
+    setNewTag("");
     setIsEditing(false);
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !editedTask.tags.includes(newTag.trim())) {
+      setEditedTask({
+        ...editedTask,
+        tags: [...editedTask.tags, newTag.trim()]
+      });
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setEditedTask({
+      ...editedTask,
+      tags: editedTask.tags.filter(tag => tag !== tagToRemove)
+    });
+  };
+
+  // Determine priority badge variant and icon
+  const getPriorityVariant = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return <Flag className="h-3 w-3 mr-1" />;
+      case 'medium':
+        return <Flag className="h-3 w-3 mr-1 opacity-70" />;
+      case 'low':
+        return <Flag className="h-3 w-3 mr-1 opacity-40" />;
+      default:
+        return <Flag className="h-3 w-3 mr-1" />;
+    }
   };
 
   return (
@@ -90,15 +152,59 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="LOW">Low</SelectItem>
-                  <SelectItem value="MEDIUM">Medium</SelectItem>
-                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
               <Input
-                type="date"
+                type="datetime-local"
                 value={editedTask.due_date}
                 onChange={(e) => setEditedTask({...editedTask, due_date: e.target.value})}
+              />
+            </div>
+            
+            {/* Tags section */}
+            <div>
+              <div className="flex items-center mb-2">
+                <TagIcon className="h-4 w-4 mr-2" />
+                <label className="text-sm font-medium">Tags</label>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {editedTask.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="flex items-center">
+                    {tag}
+                    <button 
+                      type="button" 
+                      onClick={() => removeTag(tag)}
+                      className="ml-2 text-xs rounded-full hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add a tag..."
+                  onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                />
+                <Button type="button" size="sm" variant="outline" onClick={addTag}>Add</Button>
+              </div>
+            </div>
+            
+            {/* Reminder section */}
+            <div>
+              <div className="flex items-center mb-2">
+                <Bell className="h-4 w-4 mr-2" />
+                <label className="text-sm font-medium">Reminder</label>
+              </div>
+              <Input
+                type="datetime-local"
+                value={editedTask.remind_at}
+                onChange={(e) => setEditedTask({...editedTask, remind_at: e.target.value})}
               />
             </div>
           </div>
@@ -135,17 +241,47 @@ export function TaskItem({ task, onUpdate, onDelete, onToggleComplete }: TaskIte
                     {task.description}
                   </p>
                 )}
+                
+                {/* Priority, tags, due date, and reminder info */}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <Badge variant={task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"}>
+                  {/* Priority indicator with icon */}
+                  <Badge variant={getPriorityVariant(task.priority)}>
+                    {getPriorityIcon(task.priority)}
                     {task.priority.toLowerCase()}
                   </Badge>
+                  
+                  {/* Tags */}
+                  {task.tags && task.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {task.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          <TagIcon className="h-2.5 w-2.5 mr-1" />
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Due date */}
                   {task.due_date && (
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    <div className={`flex items-center text-xs whitespace-nowrap ${
+                      isOverdue(task.due_date) 
+                        ? "text-red-500 dark:text-red-400 font-semibold" 
+                        : "text-gray-500 dark:text-gray-400"
+                    }`}>
                       <Calendar className="h-3 w-3 mr-1" />
                       {new Date(task.due_date).toLocaleDateString()}
                       {isOverdue(task.due_date) && (
-                        <span className="ml-1 text-red-500">(Overdue)</span>
+                        <span className="ml-1 animate-pulse">(OVERDUE)</span>
                       )}
+                    </div>
+                  )}
+                  
+                  {/* Reminder */}
+                  {task.remind_at && (
+                    <div className="flex items-center text-xs text-blue-500 dark:text-blue-400 whitespace-nowrap">
+                      <Bell className="h-3 w-3 mr-1" />
+                      {new Date(task.remind_at).toLocaleString()}
                     </div>
                   )}
                 </div>

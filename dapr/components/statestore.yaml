@@ -1,0 +1,58 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: default
+spec:
+  type: state.postgresql
+  version: v1
+  metadata:
+  # Connection string for Neon PostgreSQL
+  - name: connectionString
+    secretKeyRef:
+      name: neon-secret
+      key: connection-string
+  # Table name for state storage
+  - name: tableName
+    value: "dapr_state"
+  # Metadata table for tracking
+  - name: metadataTableName
+    value: "dapr_metadata"
+  # Timeout settings
+  - name: timeout
+    value: "20s"
+  # Connection pool settings
+  - name: maxConns
+    value: "10"
+  - name: connectionMaxIdleTime
+    value: "5m"
+  # Enable optimistic concurrency control
+  - name: actorStateStore
+    value: "true"
+scopes:
+- todo-backend
+- notification-service
+---
+# Alternative: Redis state store (simpler for development)
+# apiVersion: dapr.io/v1alpha1
+# kind: Component
+# metadata:
+#   name: statestore
+#   namespace: default
+# spec:
+#   type: state.redis
+#   version: v1
+#   metadata:
+#   - name: redisHost
+#     value: localhost:6379
+#   - name: redisPassword
+#     secretKeyRef:
+#       name: redis-secret
+#       key: password
+#   - name: enableTLS
+#     value: "false"
+#   - name: actorStateStore
+#     value: "true"
+# scopes:
+# - todo-backend
+# - notification-service

@@ -1,0 +1,33 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: reminder-cron
+  namespace: default
+spec:
+  type: bindings.cron
+  version: v1
+  metadata:
+  # Run every minute to check for due reminders
+  - name: schedule
+    value: "@every 1m"
+  - name: direction
+    value: "input"
+scopes:
+- notification-service
+---
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: recurring-task-cron
+  namespace: default
+spec:
+  type: bindings.cron
+  version: v1
+  metadata:
+  # Run every 5 minutes to check for overdue recurring tasks
+  - name: schedule
+    value: "@every 5m"
+  - name: direction
+    value: "input"
+scopes:
+- recurring-service

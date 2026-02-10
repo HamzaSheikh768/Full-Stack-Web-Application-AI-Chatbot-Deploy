@@ -4,6 +4,7 @@ from sqlmodel import select
 from ..database.db import SessionLocal
 from ..models.conversation import Conversation, Message
 from .core import get_agent
+from .nlp_utils import extract_task_parameters, extract_search_query, extract_tags, extract_priority
 import json
 from pathlib import Path
 import logging
@@ -113,9 +114,7 @@ def run_agent_sync(user_id: str, message_text: str, conversation_id: int = None)
             # Intent: Add/Create Task
             if any(intent_word in user_msg_lower for intent_word in ['add', 'create', 'make', 'new task', 'remember to', 'need to']):
                 # Extract task title and potential description using regex patterns
-                # Try to extract both title and description from the user's message
                 patterns = [
-                    # Pattern that captures both title and description
                     r'(?:add|create|make|remember to|need to|buy|get|do|complete|finish)\s+(?:a\s+|an\s+|the\s+|my\s+)?(?:task|to|that|for)\s+(.+?)(?:\.|!|\?|$)',
                     r'(?:add|create|make|remember to|need to|buy|get|do|complete|finish)\s+(.+?)(?:\.|!|\?|$)',
                     r'(?:i want to|i need to|let me)\s+(.+?)(?:\.|!|\?|$)'
@@ -126,23 +125,38 @@ def run_agent_sync(user_id: str, message_text: str, conversation_id: int = None)
                     if match:
                         extracted_text = match.group(1).strip().rstrip('.!?')
 
-                        # Try to separate title and description based on common separators
-                        # Look for phrases that might indicate a description follows
+                        # Separate title and description
                         title = extracted_text
                         description = None
 
-                        # Check if there's a separator that indicates a description follows
                         if any(separator in extracted_text.lower() for separator in [' - ', ' – ', ': ', ' -', ' –', ':', 'because', 'since', 'for', 'to']):
                             parts = re.split(r'(?:\s*[-–:]\s*|\s+(?:because|since|for|to)\s+)', extracted_text, 1)
                             if len(parts) > 1:
                                 title = parts[0].strip()
                                 description = parts[1].strip()
 
-                        # Execute add_task tool manually with both title and description
+                        # Extract advanced parameters using NLP utilities
+                        advanced_params = extract_task_parameters(last_user_message)
+
+                        # Build tool parameters
                         tool_params = {"title": title}
                         if description:
                             tool_params["description"] = description
 
+                        # Add advanced parameters
+                        if 'priority' in advanced_params:
+                            tool_params['priority'] = advanced_params['priority']
+                        if 'tags' in advanced_params:
+                            tool_params['tags'] = advanced_params['tags']
+                        if 'due_date' in advanced_params:
+                            tool_params['due_date'] = advanced_params['due_date']
+                        if 'remind_at' in advanced_params:
+                            tool_params['remind_at'] = advanced_params['remind_at']
+                        if 'is_recurring' in advanced_params:
+                            tool_params['is_recurring'] = advanced_params['is_recurring']
+                            tool_params['recurrence_pattern'] = advanced_params['recurrence_pattern']
+
+                        # Execute add_task tool with all parameters
                         tool_result = _execute_tool_with_user_context_sync(
                             user_id, "add_task", tool_params
                         )
@@ -154,10 +168,25 @@ def run_agent_sync(user_id: str, message_text: str, conversation_id: int = None)
                         })
 
                         if "error" not in tool_result:
+                            # Build response message with details
+                            response_parts = [f"I've added '{title}' to your task list"]
+
                             if description:
-                                final_message = f"I've added '{title}' to your task list with description: '{description}'. Is there anything else I can help you with?"
-                            else:
-                                final_message = f"I've added '{title}' to your task list. Is there anything else I can help you with?"
+                                response_parts.append(f"with description: '{description}'")
+                            if 'priority' in tool_params:
+                                response_parts.append(f"with {tool_params['priority']} priority")
+                            if 'tags' in tool_params:
+                                tags_str = ', '.join(tool_params['tags'])
+                                response_parts.append(f"tagged as: {tags_str}")
+                            if 'due_date' in tool_params:
+                                response_parts.append(f"due on {tool_params['due_date'][:10]}")
+                            if 'remind_at' in tool_params:
+                                response_parts.append(f"with reminder set")
+                            if 'is_recurring' in tool_params:
+                                pattern = tool_params['recurrence_pattern']
+                                response_parts.append(f"recurring {pattern['type']}")
+
+                            final_message = '. '.join(response_parts) + ". Is there anything else I can help you with?"
                         else:
                             final_message = f"I tried to add the task but encountered an error: {tool_result.get('error', 'Unknown error')}"
                         break
@@ -167,6 +196,7 @@ def run_agent_sync(user_id: str, message_text: str, conversation_id: int = None)
 
             # Intent: List Tasks
             elif any(intent_word in user_msg_lower for intent_word in ['show', 'list', 'view', 'see', 'my tasks', 'what']):
+                # Determine status filter
                 if any(show_word in user_msg_lower for show_word in ['all', 'pending', 'incomplete', 'not done']):
                     status_param = "pending"
                 elif any(show_word in user_msg_lower for show_word in ['done', 'completed', 'finished']):
@@ -174,58 +204,76 @@ def run_agent_sync(user_id: str, message_text: str, conversation_id: int = None)
                 else:
                     status_param = "all"
 
-                # Execute list_tasks tool
+                # Build tool parameters with advanced filtering
+                tool_params = {"status": status_param}
+
+                # Extract priority filter
+                priority_filter = extract_priority(last_user_message)
+                if priority_filter:
+                    tool_params['priority'] = priority_filter
+
+                # Extract tags filter
+                tags_filter = extract_tags(last_user_message)
+                if tags_filter:
+                    tool_params['tags'] = tags_filter
+
+                # Extract search query
+                search_query = extract_search_query(last_user_message)
+                if search_query:
+                    tool_params['search'] = search_query
+
+                # Determine sort order
+                if 'due date' in user_msg_lower or 'deadline' in user_msg_lower:
+                    tool_params['sort_by'] = 'due_date'
+                elif 'priority' in user_msg_lower:
+                    tool_params['sort_by'] = 'priority'
+                elif 'title' in user_msg_lower or 'name' in user_msg_lower:
+                    tool_params['sort_by'] = 'title'
+
+                # Execute list_tasks tool with filters
                 tool_result = _execute_tool_with_user_context_sync(
-                    user_id, "list_tasks", {"status": status_param}
+                    user_id, "list_tasks", tool_params
                 )
 
                 tool_calls_made.append({
                     "name": "list_tasks",
-                    "arguments": {"status": status_param},
+                    "arguments": tool_params,
                     "result": tool_result
                 })
 
                 if "error" not in tool_result:
                     if tool_result:  # If there are tasks
-                        # Create a more compact table with clear separation
+                        # Build filter description
+                        filter_desc = status_param
+                        if priority_filter:
+                            filter_desc += f" {priority_filter} priority"
+                        if tags_filter:
+                            filter_desc += f" tagged with {', '.join(tags_filter)}"
+                        if search_query:
+                            filter_desc += f" matching '{search_query}'"
+
+                        # Create task table
                         header_line = "┌──────────────────┬─────────────────────────────────────────────────────────────────────────────┬──────────┐"
                         footer_line = "└──────────────────┴─────────────────────────────────────────────────────────────────────────────┴──────────┘"
                         separator_line = "├──────────────────┼─────────────────────────────────────────────────────────────────────────────┼──────────┤"
-
-                        # Create header row
                         header_row = "│ Task ID          │ Task Title (Description)                                                      │ Status   │"
 
-                        # Start building the table
                         table_lines = [header_line, header_row, separator_line]
 
-                        # Add each task as a row
                         for task in tool_result:
-                            task_id = task.get('id', 'N/A')
-                            # Convert task_id to string to handle both numeric IDs and UUIDs
-                            task_id_str = str(task_id)
-
+                            task_id_str = str(task.get('id', 'N/A'))
                             title = task.get('title', 'Untitled')
-                            description = task.get('description', '')  # Get description if available
-
-                            # Combine title and description if description exists
-                            if description:
-                                display_content = f"{title} - {description}"
-                            else:
-                                display_content = title
-
+                            description = task.get('description', '')
+                            display_content = f"{title} - {description}" if description else title
                             status = "Completed" if task.get('completed', False) else "Pending"
-
-                            # Truncate long content for display (more compact than before)
                             display_content = display_content[:70] + "..." if len(display_content) > 70 else display_content
-
-                            # Create a properly aligned table row with more compact formatting
                             table_row = f"│ {task_id_str[:14]:<14} │ {display_content:<69} │ {status:<8} │"
                             table_lines.append(table_row)
 
                         table_lines.append(footer_line)
                         table_content = "\n".join(table_lines)
 
-                        final_message = f"Here are your {status_param} tasks:\n\n{table_content}\n\nIs there anything else you'd like to do?"
+                        final_message = f"Here are your {filter_desc} tasks:\n\n{table_content}\n\nIs there anything else you'd like to do?"
                     else:
                         final_message = f"You don't have any {status_param} tasks right now. Would you like to add one?"
                 else:

@@ -17,29 +17,39 @@ def get_dashboard_stats(
     """
     try:
         # Get all tasks from the database for aggregate statistics
-        from sqlmodel import select
-
-        result = db.execute(select(Task))
-        all_tasks = result.scalars().all()
-
-        # Calculate statistics based on the actual Task model fields
-        total_tasks = len(all_tasks)
-        completed_tasks = len([task for task in all_tasks if getattr(task, 'is_completed', False)])
-        pending_tasks = total_tasks - completed_tasks  # Calculate from total instead of checking for "pending"
+        # Use raw SQL to avoid model mismatches with the database schema
+        from sqlalchemy import text
+        
+        # Select only the columns that existed in the original schema
+        query = text("""
+            SELECT id, user_id, title, description, completed, priority, due_date, 
+                   created_at, updated_at, order_index, parent_id, remind_at, 
+                   is_recurring, recurrence_pattern, next_due_date
+            FROM task
+        """)
+        result = db.execute(query)
+        rows = result.fetchall()
+        
+        # Calculate statistics based on the retrieved data
+        total_tasks = len(rows)
+        
+        # Count completed tasks
+        completed_tasks = sum(1 for row in rows if row.completed)
+        pending_tasks = total_tasks - completed_tasks
 
         # Count tasks by recurrence pattern
         task_types = {"daily": 0, "weekly": 0, "monthly": 0, "yearly": 0, "none": 0}
-        for task in all_tasks:
-            recurrence_pattern = getattr(task, 'recurrence_pattern', 'none')
-            if recurrence_pattern and recurrence_pattern in task_types:
-                task_types[recurrence_pattern] += 1
+        for row in rows:
+            recurrence_pattern = getattr(row, 'recurrence_pattern', 'none') or 'none'
+            if recurrence_pattern and str(recurrence_pattern) in task_types:
+                task_types[str(recurrence_pattern)] += 1
 
         # Count tasks by priority
         task_priorities = {"low": 0, "medium": 0, "high": 0}
-        for task in all_tasks:
-            priority = getattr(task, 'priority', 'medium')
-            if priority and str(priority) in task_priorities:
-                task_priorities[str(priority)] += 1
+        for row in rows:
+            priority = getattr(row, 'priority', 'medium') or 'medium'
+            if priority and str(priority).lower() in task_priorities:
+                task_priorities[str(priority).lower()] += 1
 
         return {
             "success": True,

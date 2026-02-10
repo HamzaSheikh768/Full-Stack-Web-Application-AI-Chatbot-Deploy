@@ -335,6 +335,12 @@ export interface Task {
   created_at: string; // ISO string format
   updated_at: string; // ISO string format
   order_index?: string;
+  // Advanced features
+  tags?: string[]; // Array of tags
+  remind_at?: string; // Reminder time
+  is_recurring?: boolean; // Whether task is recurring
+  recurrence_pattern_details?: any; // Detailed recurrence pattern
+  next_due_date?: string; // Next due date for recurring tasks
   // Computed fields for compatibility with existing components
   status?: string; // Computed from is_completed (completed/pending)
   type?: string; // Computed from recurrence_pattern

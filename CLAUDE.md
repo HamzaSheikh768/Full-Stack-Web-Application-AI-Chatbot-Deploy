@@ -6,6 +6,8 @@ You are an expert AI assistant specializing in Spec-Driven Development (SDD). Yo
 
 ---
 
+@AGENTS.md
+
 ## Project Overview: Todo AI Chatbot Application
 
 A full-stack multi-user Todo application with AI-powered chatbot interface for managing tasks through natural language using MCP (Model Context Protocol) server architecture.
@@ -428,3 +430,88 @@ The MCP server must expose the following tools for the AI agent:
 - Task ownership is enforced on every operation
 - Never hardcode secrets; use `.env` files
 - BETTER_AUTH_SECRET shared between frontend and backend
+
+---
+
+## Available Skills
+
+The following skills are available for use in this project:
+
+### Architecture & Planning Skills
+- **architecture-planning**: Designs a clean, scalable, and maintainable monorepo architecture using proven patterns (feature-sliced + layered hybrid), strict dependency enforcement, boundary rules, and comprehensive visualizations.
+- **monorepo-setup**: Provides a comprehensive, framework-agnostic guide to initialize a scalable monorepo project, covering initial structure, workspace configuration, shared tooling, dependency management, performance considerations, and long-term maintainability best practices.
+- **root-level-guidance**: Provides detailed guidance on configuring essential root-level files for consistency, performance, and maintainability across any monorepo setup.
+- **spec-kit-configuration**: Establishes a centralized design token and component specification system for visual and thematic consistency across all applications.
+
+### Authentication & Security Skills
+- **auth-skill**: Implements secure user authentication features including signup, signin, password hashing with bcrypt, JWT token generation and validation, and integration with enhanced auth libraries or practices. Use this skill when developing or troubleshooting authentication flows in web applications, APIs, or backend services to ensure secure user management.
+- **better-auth-configuration**: Configures a secure, modern authentication system with best practices for registration, login, password handling, email verification, social logins, and security hardening.
+- **auth-protection-testing**: Verifies that authentication and authorization protections are enforced across all protected routes, APIs, and server actions with comprehensive unauthorized access tests.
+- **jwt-plugin-enable**: Enables and configures JWT authentication plugin (like fastapi-jwt-auth or Authlib) with proper secret management, token expiry, refresh routes, and revocation support.
+- **jwt-token-management**: Implements secure JWT token creation, signing, verification, refresh token rotation, and blacklisting with short-lived access tokens and long-lived refresh tokens.
+- **session-handling**: Manages user sessions with logout, concurrent session limits, session revocation, single sign-out, and audit logging.
+- **shared-secret-setup**: Properly generates, stores, rotates, and manages shared secrets for JWT signing, database encryption, and external API keys with secure practices.
+- **shared-secret-management**: Manages secure storage, rotation, and usage of secrets (API keys, JWT secrets, database credentials) using environment variables, secret managers, and rotation strategies.
+- **token-verification-middleware**: Implements reusable token verification middleware using JWT, HttpOnly cookies, or headers with proper error handling and user object injection.
+
+### Backend Development Skills
+- **backend-skill**: Generates backend routes for web applications, handles HTTP requests and responses, and manages database connections. Use this skill when users request assistance with creating or modifying server-side endpoints, integrating data persistence, or building RESTful APIs in frameworks like Express.js, Flask, or Django.
+- **backend-hosting**: Recommends and configures reliable hosting for FastAPI backend with options for Render, Railway, Fly.io, AWS, focusing on scalability, logs, metrics, and zero-downtime deploys.
+- **dependency-injection**: Leverages FastAPI's powerful Depends system for reusable authentication, database sessions, rate limiting, and business logic injection.
+- **error-handling**: Implements consistent global and custom error handling with standardized responses, logging, and proper HTTP status codes.
+- **fastapi-routing**: Organizes FastAPI routes using APIRouter for modular, versioned, tagged endpoints with proper prefixes, dependencies, and response models.
+- **rest-endpoint-design**: Designs clean, consistent, RESTful endpoints following industry standards with proper HTTP methods, status codes, versioning, naming conventions, and OpenAPI documentation.
+- **ownership-enforcement**: Strictly enforces resource ownership on update/delete operations by verifying current user owns the resource before allowing modifications.
+- **path-parameter-handling**: Safely handles path parameters with validation, type conversion, existence checks, and proper error responses for invalid or missing resources.
+- **user-id-filtering**: Automatically filters query results by current user ID for list endpoints to prevent data leakage while allowing admin overrides.
+- **user-isolation-verification**: Ensures strict data isolation between users in multi-tenant applications by testing that users can only access their own data across all endpoints and features.
+
+### Database Skills
+- **database-schema-design**: Designs relational database schemas, creates table definitions, and generates migration scripts. Use this skill when users need help with database structure planning, SQL table creation, or versioned schema changes in frameworks like SQLAlchemy, Rails, or raw SQL.
+- **database-schema-spec**: Designs and documents database schema changes with tables, columns, indexes, relationships, migration strategy, and backward compatibility considerations.
+- **migration-planning**: Plans safe, reversible database migrations with zero-downtime strategies, backfill plans, rollback procedures, and coordination with application releases.
+- **schema-design**: Designs normalized, performant, and future-proof PostgreSQL database schemas with proper normalization, indexing strategy, constraints, partitioning considerations, and scalability planning.
+- **neon-connection**: Configures secure, performant connection to Neon serverless PostgreSQL with connection pooling, prepared statements, branching workflow, and environment-specific settings.
+- **sqlmodel-orm**: Defines database models using SQLModel (SQLAlchemy + Pydantic) for type-safe tables, relationships, and seamless integration with FastAPI schemas.
+- **sqlmodel-model**: Creates advanced SQLModel models with relationships, indexes, constraints, enums, JSONB fields, computed columns, and migration-friendly patterns.
+- **relationship-mapping**: Properly defines one-to-one, one-to-many, many-to-many relationships in SQLModel with back_populates, cascade rules, and lazy/eager loading considerations.
+- **model-definition**: Defines clean, reusable SQLModel models with proper field types, defaults, constraints, indexes, and separation of concerns between table models and schemas.
+
+### Frontend Development Skills
+- **client-component**: Properly marks and implements Client Components for interactivity, state management, and browser APIs while keeping bundle size minimal.
+- **server-component**: Maximizes use of React Server Components for data fetching, reduced bundle size, and improved performance in Next.js App Router.
+- **server-components**: Leverages React Server Components for optimal performance by fetching data on the server, reducing client bundle size, and enabling streaming.
+- **frontend-building-components-skill**: This Skill equips Claude to construct frontend web elements including pages, reusable components, layouts, and styling. It provides structured guidance for generating HTML, CSS, and JavaScript code. Use this Skill when users request help with creating, modifying, or troubleshooting frontend UI elements, such as building a webpage layout, styling components, or implementing interactive features without backend integration.
+- **responsive-design**: Implements mobile-first responsive design using Tailwind's responsive utilities, proper breakpoints, flexible layouts, and accessibility considerations.
+- **responsive-component-design**: Designs reusable, mobile-first responsive components using Tailwind CSS with proper breakpoints, flexible layouts, grid/flex systems, and accessibility considerations.
+- **form-handling**: Implements robust form handling with validation, error display, loading states, server actions, and accessibility features.
+- **client-side-api-calling**: Implements secure, efficient client-side data fetching using React Server Actions, SWR, or tanstack-query with proper error handling, loading states, authentication, and caching.
+- **nextjs-app-router**: Sub-agent skill for setting up and enforcing best practices in a Next.js 14+ project using the App Router. Ensures correct folder structure, route groups, layouts, parallel routes, intercepting routes, and metadata handling.
+- **tailwind-css-styling**: Implements clean, consistent, reusable Tailwind CSS styling with design tokens from spec-kit, dark mode support, custom components, and utility best practices.
+- **vercel-deployment**: Configures optimal Vercel deployment for Next.js App Router projects with preview branches, environment variables, serverless functions, edge runtime, and performance optimizations.
+
+### Testing & Quality Assurance Skills
+- **end-to-end-flow-testing**: Designs and implements comprehensive end-to-end tests covering critical user journeys using Playwright for browser automation and direct API calls for backend flows.
+- **crud-route-implementation**: Implements complete CRUD operations across Next.js routes and FastAPI endpoints with proper validation, error handling, and optimistic updates.
+
+### API & Documentation Skills
+- **api-specification**: Creates clear, versioned REST/GraphQL API specifications with endpoints, request/response schemas, authentication, error handling, and examples.
+- **environment-variables**: Manages secure environment variables across development, preview, staging, and production with secret handling, validation, and documentation.
+- **header-attachment**: Properly attaches custom headers to responses including CORS, security headers, rate limit info, request IDs, and caching directives.
+
+### UI/UX & Task Management Skills
+- **task-list-ui**: Implements interactive task/todo list UI with add, complete, edit, delete, filtering, sorting, and persistence features.
+- **user-story-creation**: Converts requirements and specifications into well-written, INVEST-compliant user stories with clear titles, descriptions, and actionable tasks.
+- **acceptance-criteria**: Writes comprehensive, unambiguous Given-When-Then acceptance criteria that fully define when a user story is considered complete.
+
+### Documentation & Specification Skills
+- **markdown-spec-writing**: Writes clear, professional, well-structured Markdown specifications for features, components, modules, or any technical documentation with consistent formatting, headings, tables, code blocks, and diagrams.
+
+### Cloud-Native-Blueprint & Advanced Skills
+- **dapr-jobs-reminders**: Dapr Jobs API for scheduled tasks, recurring jobs, and due-date reminders in cloud-native applications. Use when implementing scheduled background jobs, task reminders, recurring tasks, cron-like scheduling, or time-based automation with Dapr. Covers Dapr Jobs API configuration, reminder patterns, scheduling workflows, and integration with event-driven architectures for Todo applications.
+- **kafka-redpanda-dapr**: Event streaming infrastructure with Kafka or Redpanda integrated with Dapr for cloud-native applications. Use when implementing event-driven microservices, pub/sub messaging, event streaming, or async communication. Redpanda is recommended as a Kafka-compatible alternative with better performance and lower resource usage. Covers Redpanda deployment, Dapr Kafka component configuration, topic management, and event streaming patterns for Todo applications.
+- **oci-oke-deployment**: Oracle Cloud Infrastructure (OCI) Kubernetes Engine (OKE) deployment and management for cloud-native applications. Use when deploying to Oracle Cloud Kubernetes, creating OKE clusters, configuring OCI networking, managing node pools, setting up OCI load balancers, or implementing cloud-native applications on Oracle Cloud. Covers OCI CLI usage, cluster provisioning, VCN configuration, Dapr installation on OKE, and Oracle Cloud best practices.
+- **cloud-native-blueprints**: Comprehensive cloud-native architecture blueprints including containerization, orchestration, service mesh, observability, and deployment strategies for modern applications.
+
+### Claude Code Skills
+- **claude-md-generation**: Generates a comprehensive CLAUDE.md file documenting the entire project structure, architecture, available skills, and recommended workflow.

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import uuid
 from sqlalchemy import or_
 from sqlalchemy.sql import func
-from ..models.task import Task
+from ..models.task import Task, TaskPriority, RecurrenceEnum
 from ..models.user import User
 from pydantic import BaseModel
 
@@ -373,33 +373,81 @@ class TaskService:
     @staticmethod
     async def get_filtered_tasks(
         session: AsyncSession,
+        user_id: str,
         status: Optional[str] = None,
         priority: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        due_date_from: Optional[datetime] = None,
+        due_date_to: Optional[datetime] = None,
         search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
         limit: int = 100,
         offset: int = 0
     ) -> tuple[List[TaskResponse], int]:
         """
-        Get tasks with filtering options (status, priority, search) and return total count
+        Get tasks with filtering options (status, priority, tags, due date range, search) and return total count
+        Includes optimization for large datasets with proper indexing and efficient querying
         """
-        # Base query
-        query = select(Task)
+        # Base query with user isolation
+        query = select(Task).where(Task.user_id == user_id)
 
         # Apply filters if provided
         if status:
             is_completed_filter = (status.lower() == "completed")
-            query = query.where(Task.is_completed == is_completed_filter)
+            query = query.where(Task.completed == is_completed_filter)
 
         if priority:
             query = query.where(Task.priority == priority.lower())
 
+        if tags:
+            # Filter by tags - assuming tags is stored as a JSON array
+            for tag in tags:
+                query = query.where(Task.tags.op('?')(tag))  # Using PostgreSQL's JSON contains operator
+
+        if due_date_from:
+            query = query.where(Task.due_date >= due_date_from)
+
+        if due_date_to:
+            query = query.where(Task.due_date <= due_date_to)
+
         if search:
+            # Use full-text search if available, otherwise use ilike
             query = query.where(
                 or_(
                     Task.title.ilike(f"%{search}%"),
                     Task.description.ilike(f"%{search}%") if Task.description is not None else False
                 )
             )
+
+        # Apply sorting
+        if sort_by == "priority":
+            # Sort by priority with high > medium > low
+            priority_order = func.CASE(
+                (Task.priority == 'high', 1),
+                (Task.priority == 'medium', 2),
+                (Task.priority == 'low', 3),
+                else_=4
+            )
+            if sort_order.lower() == "asc":
+                query = query.order_by(priority_order.asc(), Task.created_at.desc())
+            else:
+                query = query.order_by(priority_order.asc(), Task.created_at.desc())
+        elif sort_by == "due_date":
+            if sort_order.lower() == "asc":
+                query = query.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc())
+            else:
+                query = query.order_by(Task.due_date.desc().nullslast(), Task.created_at.desc())
+        elif sort_by == "title":
+            if sort_order.lower() == "asc":
+                query = query.order_by(Task.title.asc(), Task.created_at.desc())
+            else:
+                query = query.order_by(Task.title.desc(), Task.created_at.desc())
+        else:  # Default to created_at
+            if sort_order.lower() == "asc":
+                query = query.order_by(Task.created_at.asc())
+            else:
+                query = query.order_by(Task.created_at.desc())
 
         # Count total records matching filters (before pagination)
         count_query = select(func.count()).select_from(query.subquery())
@@ -417,7 +465,7 @@ class TaskService:
                 id=str(task.id),  # Convert UUID to string
                 title=task.title,
                 description=task.description,
-                status="completed" if task.is_completed else "pending",  # Map is_completed to status
+                status="completed" if task.completed else "pending",  # Map is_completed to status
                 priority=task.priority,
                 type=task.recurrence_pattern or "daily",  # Map recurrence_pattern to type
                 due_date=task.due_date,

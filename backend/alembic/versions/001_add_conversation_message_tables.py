@@ -1,7 +1,7 @@
 """Add conversation and message tables
 
-Revision ID: 001_add_conversation_message_tables
-Revises:
+Revision ID: 001_conv_msg_tables
+Revises: 591a59c37569
 Create Date: 2026-01-23 15:30:00.000000
 
 """
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # Revision identifiers, used by Alembic.
-revision: str = '001_add_conversation_message_tables'
-down_revision: Union[str, None] = None
+revision: str = '001_conv_msg_tables'
+down_revision: Union[str, None] = '591a59c37569'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,7 +1,13 @@
-from fastapi import APIRouter, HTTPException, status, Query
+"""
+[Task: T-042]
+[From: speckit.specify §4.2.3, speckit.plan §5.1.2]
+
+Task routes module providing CRUD operations and filtering for tasks with event-driven support.
+"""
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import List, Optional
 from sqlmodel import Session, select, and_
-from datetime import datetime
+from datetime import datetime, timezone
 from ..db import get_session
 from ..models import Task, User, TaskCreate, TaskUpdate
 from ..schemas import TaskRead, TaskListResponse, TaskUpdateStatus
@@ -116,8 +122,8 @@ def create_task(
     task = Task(
         **task_data,
         user_id=user_id,
-        created_at=datetime.now(datetime.timezone.utc),
-        updated_at=datetime.now(datetime.timezone.utc)
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
 
     session.add(task)
@@ -178,7 +184,7 @@ def update_task(
     for field, value in update_data.items():
         setattr(task, field, value)
 
-    task.updated_at = datetime.now(datetime.timezone.utc)
+    task.updated_at = datetime.now(timezone.utc)
 
     session.add(task)
     session.commit()
@@ -236,7 +242,7 @@ def update_task_completion(
 
     # Update completion status
     task.completed = task_status.completed
-    task.updated_at = datetime.now(datetime.timezone.utc)
+    task.updated_at = datetime.now(timezone.utc)
 
     # Handle recurring tasks
     if task_status.completed and task.recurrence != RecurrenceEnum.none:
